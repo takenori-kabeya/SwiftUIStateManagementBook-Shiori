@@ -18,16 +18,25 @@ struct ItineraryViewerView: View {
     }
 
     var body: some View {
+        TimelineView(.periodic(from: .now, by: 60)) { context in
+            content(now: context.date)
+        }
+        .navigationTitle("旅程を見る")
+    }
+
+    @ViewBuilder
+    private func content(now: Date) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                if let current = currentSpot {
+                if let current = currentSpot(at: now) {
                     CurrentSpotCard(spot: current)
                 }
-                
-                if let next = nextSpot {
+
+                if let next = nextSpot(at: now) {
                     NextSpotCard(spot: next)
                 }
-                VStack(alignment: .leading, spacing: 8) {
+
+                VStack(alignment: .leading, spacing: 12) {
                     Text("旅程全体")
                         .font(.title3)
                     
@@ -51,7 +60,7 @@ struct ItineraryViewerView: View {
                                 isTimeOrderMisaligned: misalignedSpotIDs.contains(spot.id),
                                 isTimeConflict: conflictingSpotIDs.contains(spot.id)
                             ) {
-                                statusBadge(for: spot)
+                                statusBadge(for: spot, at: now)
                             }
                         }
                     }
@@ -59,12 +68,11 @@ struct ItineraryViewerView: View {
                 .padding()
             }
         }
-        .navigationTitle("旅程を見る")
     }
 
     @ViewBuilder
-    private func statusBadge(for spot: Spot) -> some View {
-        let status = spotStatus(for: spot)
+    private func statusBadge(for spot: Spot, at now: Date) -> some View {
+        let status = spotStatus(for: spot, at: now)
         VStack {
             Spacer()
             if status == .current {
@@ -76,61 +84,22 @@ struct ItineraryViewerView: View {
         }
     }
 
-    private func spotStatus(for spot: Spot) -> ItinerarySpotStatus {
-        if currentSpot?.id == spot.id {
+    private func spotStatus(for spot: Spot, at now: Date) -> ItinerarySpotStatus {
+        if currentSpot(at: now)?.id == spot.id {
             return .current
         }
-        if nextSpot?.id == spot.id {
+        if nextSpot(at: now)?.id == spot.id {
             return .next
         }
         return .none
     }
-    
-    private var currentSpot: Spot? {
-        let now = Date.now
-        for spot in (self.itinerary.confirmedSpots) {
-            guard let startDateTime = spot.startTime else {
-                continue
-            }
-            guard let duration = spot.durationMinutes else {
-                continue
-            }
-            let dateComponents = Calendar.current.dateComponents([.calendar, .year, .month, .day], from: Date.now)
-            let timeComponents = Calendar.current.dateComponents([.calendar, .hour, .minute], from: startDateTime)
-            let startTime = DateComponents(calendar: dateComponents.calendar, year: dateComponents.year, month: dateComponents.month, day: dateComponents.day, hour: timeComponents.hour, minute: timeComponents.minute).date!
-            
-            let endTime = startTime.addingTimeInterval(TimeInterval(duration * 60))
-            if startTime <= now && now <= endTime {
-                return spot
-            }
-        }
-        return nil
+
+    private func currentSpot(at now: Date) -> Spot? {
+        ItineraryCurrentNextResolver.currentSpot(in: itinerary.confirmedSpots, at: now)
     }
-    private var nextSpot: Spot? {
-        // いまの予定が見つかれば、その次の予定を返す
-        if let current = currentSpot {
-            guard let currentIndex = itinerary.confirmedSpots.firstIndex(of: current) else {
-                return nil
-            }
-            let nextIndex = currentIndex.advanced(by: 1)
-            guard let lastIndex = itinerary.confirmedSpots.indices.last, nextIndex <= lastIndex else {
-                return nil
-            }
-            return itinerary.confirmedSpots[nextIndex]
-        }
-        // いまの予定が見つからない場合は、いまの時刻以降で、もっとも早い予定を返す
-        else {
-            let now = Date.now
-            let spotWithTime = itinerary.confirmedSpots.filter({
-                $0.startTime != nil &&
-                now <= getTimeOfToday($0.startTime!)
-            })
-            if spotWithTime.isEmpty {
-                return nil
-            }
-            let sorted = spotWithTime.sorted(by: { $0.startTime! < $1.startTime! })
-            return sorted.first
-        }
+
+    private func nextSpot(at now: Date) -> Spot? {
+        ItineraryCurrentNextResolver.nextSpot(in: itinerary.confirmedSpots, at: now)
     }
     
     private func getTimeOfToday(_ dateTime: Date) -> Date {
