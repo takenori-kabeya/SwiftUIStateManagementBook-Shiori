@@ -4,10 +4,10 @@ import Dependencies
 import DependenciesTestSupport
 @testable import Shiori
 
-/// `fetchForecast` の呼び出しを suspend / resume し、キャンセルを観測するテスト用ゲート
-private final class ForecastFetchGate: @unchecked Sendable {
+/// `fetch` の呼び出しを suspend / resume し、キャンセルを観測するテスト用ゲート
+class FetchGate<ResultT>: @unchecked Sendable {
     private struct Call {
-        var continuation: CheckedContinuation<[DailyWeatherForecast], Error>?
+        var continuation: CheckedContinuation<[ResultT], Error>?
         var isCancelled = false
     }
     
@@ -24,12 +24,8 @@ private final class ForecastFetchGate: @unchecked Sendable {
     var keepContinuationWhenCancel: Bool
 
     /// fetch を開始し、resume かキャンセルまでサスペンドする
-    func fetchForecast(
-        _ latitude: Double,
-        _ longitude: Double,
-        _ fromDate: Date,
-        _ numDays: Int
-    ) async throws -> [DailyWeatherForecast] {
+    func fetch(
+    ) async throws -> [ResultT] {
         let callIndex = lock.withLock {
             let index = fetchCallCount
             fetchCallCount += 1
@@ -101,7 +97,7 @@ private final class ForecastFetchGate: @unchecked Sendable {
     }
 
     /// 指定インデックスの待ち中 fetch を success / failure で再開する
-    func resume(at index: Int, with result: Result<[DailyWeatherForecast], Error>) {
+    func resume(at index: Int, with result: Result<[ResultT], Error>) {
         lock.withLock {
             guard index < calls.count else { return }
             guard keepContinuationWhenCancel || !calls[index].isCancelled else { return }
@@ -174,7 +170,7 @@ private func makeCondition(
 
 @MainActor
 private func makeStoreWithGate(
-    gate: ForecastFetchGate,
+    gate: FetchGate<DailyWeatherForecast>,
     initialForecasts: [DailyWeatherForecast] = []
 ) -> TestStore<WeatherForecastFeature.State, WeatherForecastFeature.Action> {
     let place = makePlace()
@@ -185,7 +181,7 @@ private func makeStoreWithGate(
         WeatherForecastFeature()
     } withDependencies: {
         $0.weatherForecast.fetchForecast = { latitude, longitude, fromDate, numDays in
-            try await gate.fetchForecast(latitude, longitude, fromDate, numDays)
+            try await gate.fetch()
         }
     }
 }
@@ -194,7 +190,7 @@ private func makeStoreWithGate(
 /// 戻り値は1回目の refreshRequested の Task。
 @MainActor
 private func sendTwoRefreshRequestsAndWaitForSecondFetch(
-    gate: ForecastFetchGate,
+    gate: FetchGate<DailyWeatherForecast>,
     store: TestStore<WeatherForecastFeature.State, WeatherForecastFeature.Action>
 ) async -> TestStoreTask {
     let firstTask = await store.send(.refreshRequested) {
@@ -369,7 +365,7 @@ struct WeatherForecastFeatureTests {
 @MainActor
 struct WeatherForecastFeatureCancellationTests {
     @Test func 二回目の更新で一回目の取得をキャンセルし最新の成功だけ反映すること() async {
-        let gate = ForecastFetchGate()
+        let gate = FetchGate<DailyWeatherForecast>()
         let firstForecasts = [makeForecast(date: "2026-08-01")]
         let secondForecasts = [makeForecast(date: "2026-08-02")]
         let store = makeStoreWithGate(gate: gate)
@@ -396,7 +392,7 @@ struct WeatherForecastFeatureCancellationTests {
     }
     
     @Test func 二回目の更新で一回目の取得から成功が返ってきても最新の成功だけ反映すること() async {
-        let gate = ForecastFetchGate(keepContinuationWhenCancel: true)
+        let gate = FetchGate<DailyWeatherForecast>(keepContinuationWhenCancel: true)
         let firstForecasts = [makeForecast(date: "2026-08-01")]
         let secondForecasts = [makeForecast(date: "2026-08-02")]
         let store = makeStoreWithGate(gate: gate)
@@ -423,7 +419,7 @@ struct WeatherForecastFeatureCancellationTests {
     }
     
     @Test func キャンセルされた一回目の取得失敗ではエラーメッセージを設定しないこと() async {
-        let gate = ForecastFetchGate()
+        let gate = FetchGate<DailyWeatherForecast>()
         let secondForecasts = [makeForecast(date: "2026-08-02")]
         let store = makeStoreWithGate(gate: gate)
 
@@ -444,7 +440,7 @@ struct WeatherForecastFeatureCancellationTests {
     }
     
     @Test func viewDisappearedで取得をキャンセルすること() async {
-        let gate = ForecastFetchGate()
+        let gate = FetchGate<DailyWeatherForecast>()
         let existingForecasts = [makeForecast(date: "2026-07-31")]
         let forecastsToFetch = [makeForecast(date: "2026-08-01")]
         let store = makeStoreWithGate(gate: gate, initialForecasts: existingForecasts)

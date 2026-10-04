@@ -4,6 +4,39 @@ import Dependencies
 import DependenciesTestSupport
 @testable import Shiori
 
+
+@MainActor
+private func makeStoreWithGate(
+    gate: FetchGate<PlaceCandidate>,
+    query: String = ""
+) -> TestStore<PlaceSearchFeature.State, PlaceSearchFeature.Action> {
+    let store = TestStore(initialState: PlaceSearchFeature.State(query: query)) {
+        PlaceSearchFeature()
+    } withDependencies: {
+        $0.placeSearch.search = { _ in
+            try await gate.fetch()
+        }
+    }
+    
+    return store
+}
+
+private func makeCandidate(
+    id: UUID,
+    name: String = "東京駅",
+    latitude: Double = 35.681072,
+    longitude: Double = 139.767427
+) -> PlaceCandidate {
+    PlaceCandidate(
+        id: id,
+        place: Place(
+            name: name,
+            address: "東京都千代田区, 丸の内",
+            latitude: latitude,
+            longitude: longitude)
+    )
+}
+
 /// `PlaceSearchFeature` を `TestStore` で検証する
 @Suite(
     .dependencies {
@@ -193,5 +226,70 @@ struct PlaceSearchFeatureTests {
             $0.selectedPlace = nil
             $0.errorMessage = PlaceSearchError.notFound.localizedDescription
         }
+    }
+    
+    @Test func 検索中に再検索すると前の検索がキャンセルされ新しい検索が行われること() async {
+        let gate = FetchGate<PlaceCandidate>()
+        let firstCandidate = makeCandidate(id: uuid(), name: "東京駅")
+        let secondCandidate = makeCandidate(id: uuid(), name: "新宿駅", address: "東京都新宿区, 新宿", latitude: 35689932, longitude: 139.700527)
+        let store = makeStoreWithGate(gate: gate, query: "東京駅")
+
+        await store.send(.searchButtonTapped) {
+            $0.isSearching = true
+            $0.candidates = []
+            $0.selectedPlace = nil
+            $0.errorMessage = nil
+        }
+        await store.send(.queryChanged("新宿駅")) {
+            $0.query = "新宿駅"
+        }
+        await store.send(.searchButtonTapped)
+        await gate.waitUntilCancelled(at: 0)
+
+        #expect(gate.callCount() == 2)
+        #expect(gate.cancelledIndices().contains(0))
+        #expect(!gate.cancelledIndices().contains(1))
+        
+        gate.resume(at: 0, with: .success([firstCandidate]))
+        #expect(store.state.isSearching == true)
+        #expect(store.state.candidates == [])
+        #expect(store.state.errorMessage == nil)
+
+        gate.resume(at: 1, with: .success([secondCandidate]))
+        await store.receive(\.searchResponse.success) {
+            $0.isSearching = false
+            $0.candidates = []
+            $0.selectedPlace = secondCandidate.place
+            $0.errorMessage = nil
+        }
+        await store.finish()
+    }
+    
+    @Test func 検索中に地点検索画面を閉じると検索Effectがキャンセルされること() async {
+        let gate = FetchGate<PlaceCandidate>()
+        let tripDraft = TripDraft(
+            info: TripInfo(id: uuid(), title: "旅行", startDate: Date(timeIntervalSince1970: 0)),
+            itinerary: Itinerary(candidateSpots: [], itineraryDays: []))
+        let store = TestStore(initialState: TripEditFeature.State(draft: tripDraft)) {
+            TripEditFeature()
+        } withDependencies: {
+            $0.placeSearch.search = { _ in
+                try await gate.fetch()
+            }
+        }
+        
+        await store.send(.placeSearchButtonTapped) {
+            $0.placeSearch = PlaceSearchFeature.State()
+        }
+        await store.send(.placeSearch(.presented(.queryChanged("東京")))) {
+            $0.placeSearch?.query = "東京"
+        }
+        await store.send(.placeSearch(.presented(.searchButtonTapped))) {
+            $0.placeSearch?.isSearching = true
+        }
+        await store.send(.placeSearch(.dismiss)) {
+            $0.placeSearch = nil
+        }
+        #expect(gate.cancelledIndices().contains(0))
     }
 }

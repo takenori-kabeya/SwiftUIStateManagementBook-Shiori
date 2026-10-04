@@ -26,6 +26,10 @@ struct PlaceSearchFeature {
             case confirmed(Place)
         }
     }
+    
+    nonisolated enum CancellableTask: Hashable, Sendable {
+        case search
+    }
 
     @Dependency(\.placeSearch) var placeSearch
     @Dependency(\.dismiss) var dismiss
@@ -61,6 +65,7 @@ struct PlaceSearchFeature {
                         await send(.searchResponse(.failure(.searchFailed)))
                     }
                 }
+                .cancellable(id: CancellableTask.search, cancelInFlight: true)
 
             case let .searchResponse(.success(places)):
                 state.isSearching = false
