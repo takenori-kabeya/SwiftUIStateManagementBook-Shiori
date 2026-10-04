@@ -5,4 +5,5 @@ nonisolated struct TripInfo: Identifiable, Codable, Equatable {
     let id: UUID
     var title: String
     var startDate: Date
+    var weatherPlace: Place?
 }

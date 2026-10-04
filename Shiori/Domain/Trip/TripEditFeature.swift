@@ -11,6 +11,7 @@ struct TripEditFeature {
     struct State: Equatable {
         var draft: TripDraft
         var dayCountReductionPending: DayCountReductionPending?
+        @Presents var placeSearch: PlaceSearchFeature.State?
     }
     
     enum Action {
@@ -29,6 +30,9 @@ struct TripEditFeature {
         enum Delegate {
             case saveRequested(TripDraft)
         }
+        
+        case placeSearchButtonTapped
+        case placeSearch(PresentationAction<PlaceSearchFeature.Action>)
     }
     
     var body: some Reducer<State, Action> {
@@ -77,7 +81,21 @@ struct TripEditFeature {
                 }
             case .delegate:
                 return .none
+                
+            case .placeSearchButtonTapped:
+                state.placeSearch = PlaceSearchFeature.State(selectedPlace: state.draft.info.weatherPlace)
+                return .none
+                
+            case .placeSearch(.presented(.delegate(.confirmed(let place)))):
+                state.draft.info.weatherPlace = place
+                return .none
+                
+            case .placeSearch:
+                return .none
             }
+        }
+        .ifLet(\.$placeSearch, action: \.placeSearch) {
+            PlaceSearchFeature()
         }
     }
 }

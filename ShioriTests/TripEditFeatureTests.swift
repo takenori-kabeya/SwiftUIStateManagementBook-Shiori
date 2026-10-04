@@ -5,12 +5,42 @@ import DependenciesTestSupport
 @testable import Shiori
 
 /// `TripEditFeature` を `TestStore` で検証する
+@Suite(
+    .dependencies {
+        $0.uuid = .incrementing
+    }
+)
 @MainActor
 struct TripEditFeatureTests {
-    private func makeSpot(id: UUID = UUID(), title: String) -> Spot {
+    @Dependency(\.uuid) var uuid
+
+    private func makeSpot(id: UUID, title: String) -> Spot {
         Spot(id: id, title: title, startTime: nil, durationMinutes: nil, memo: "")
     }
-
+    
+    private func makeTrip(
+        id: UUID? = nil,
+        title: String = "東京",
+        weatherPlace: Place? = nil,
+        dayCount: Int = 1,
+        spotsOnLastDay: [Spot] = []
+    ) -> Trip {
+        let tripID = id ?? uuid()
+        var days: [ItineraryDay] = (0..<max(0, dayCount - 1)).map { _ in
+            ItineraryDay(id: uuid(), spots: [])
+        }
+        days.append(ItineraryDay(id: uuid(), spots: spotsOnLastDay))
+        return Trip(
+            info: TripInfo(
+                id: tripID,
+                title: title,
+                startDate: Date(timeIntervalSince1970: 0),
+                weatherPlace: weatherPlace
+            ),
+            itinerary: Itinerary(candidateSpots: [], itineraryDays: days)
+        )
+    }
+    
     private func makeDraft(
         title: String = "東京",
         startDate: Date = Date(timeIntervalSince1970: 0),
@@ -18,12 +48,12 @@ struct TripEditFeatureTests {
     ) -> TripDraft {
         let itineraryDays = days.map { titles in
             ItineraryDay(
-                id: UUID(),
-                spots: titles.map { makeSpot(title: $0) }
+                id: uuid(),
+                spots: titles.map { makeSpot(id: uuid(), title: $0) }
             )
         }
         return TripDraft(
-            info: TripInfo(id: UUID(), title: title, startDate: startDate),
+            info: TripInfo(id: uuid(), title: title, startDate: startDate),
             itinerary: Itinerary(candidateSpots: [], itineraryDays: itineraryDays)
         )
     }
@@ -34,6 +64,110 @@ struct TripEditFeatureTests {
         days: [[String]] = [[]]
     ) -> TripEditFeature.State {
         TripEditFeature.State(draft: makeDraft(title: title, startDate: startDate, days: days))
+    }
+
+    @Test func placeSearchButtonTappedで現在のweatherPlaceを引き継ぐこと() async {
+        let place = Place(
+            name: "東京駅",
+            address: "東京都千代田区",
+            latitude: 35.6812,
+            longitude: 139.7671
+        )
+        let trip = makeTrip(weatherPlace: place)
+        let store = TestStore(initialState: TripEditFeature.State(
+            draft: TripDraft(info: trip.info, itinerary: trip.itinerary))) {
+            TripEditFeature()
+        }
+
+        await store.send(.placeSearchButtonTapped) {
+            $0.placeSearch = PlaceSearchFeature.State(selectedPlace: place)
+        }
+    }
+
+    @Test func placeSearchのconfirmedで下書きだけ更新すること() async {
+        let original = Place(
+            name: "東京駅",
+            address: "東京都千代田区",
+            latitude: 35.6812,
+            longitude: 139.7671
+        )
+        let confirmed = Place(
+            name: "京都駅",
+            address: "京都府京都市",
+            latitude: 34.9858,
+            longitude: 135.7588
+        )
+        let trip = makeTrip(weatherPlace: original)
+        let store = TestStore(
+            initialState: TripEditFeature.State(
+                draft: TripDraft(info: trip.info, itinerary: trip.itinerary),
+                placeSearch: PlaceSearchFeature.State(selectedPlace: original)
+            )
+        ) {
+            TripEditFeature()
+        }
+
+        await store.send(.placeSearch(.presented(.delegate(.confirmed(confirmed))))) {
+            $0.draft.info.weatherPlace = confirmed
+        }
+        #expect(store.state.draft.info.weatherPlace == confirmed)
+        #expect(store.state.draft.info.title == trip.info.title)
+    }
+
+    @Test func placeSearchのcancelでweatherPlaceを変えないこと() async {
+        let place = Place(
+            name: "東京駅",
+            address: "東京都千代田区",
+            latitude: 35.6812,
+            longitude: 139.7671
+        )
+        let trip = makeTrip(weatherPlace: place)
+        let store = TestStore(
+            initialState: TripEditFeature.State(
+                draft: TripDraft(info: trip.info, itinerary: trip.itinerary),
+                placeSearch: PlaceSearchFeature.State(selectedPlace: place)
+            )
+        ) {
+            TripEditFeature()
+        }
+
+        await store.send(.placeSearch(.presented(.cancelButtonTapped)))
+        await store.receive(\.placeSearch) {
+            $0.placeSearch = nil
+        }
+        #expect(store.state.draft.info.weatherPlace == place)
+    }
+
+    @Test func saveButtonTappedで更新した下書きをDelegate経由で送ること() async {
+        let trip = makeTrip(title: "旧")
+        let store = TestStore(initialState: TripEditFeature.State(
+                    draft: TripDraft(info: trip.info, itinerary: trip.itinerary))) {
+            TripEditFeature()
+        }
+
+        await store.send(.titleChanged("新")) {
+            $0.draft.info.title = "新"
+        }
+
+        var expected = TripDraft(info: trip.info, itinerary: trip.itinerary)
+        expected.info.title = "新"
+
+        await store.send(.saveButtonTapped)
+        await store.receive(\.delegate.saveRequested)
+        #expect(store.state.draft == expected)
+    }
+
+    @Test func cancelButtonTappedではsaveRequestedを送らないこと() async {
+        let trip = makeTrip(title: "東京")
+        let store = TestStore(initialState: TripEditFeature.State(
+                    draft: TripDraft(info: trip.info, itinerary: trip.itinerary))) {
+            TripEditFeature()
+        }
+
+        await store.send(.titleChanged("変更途中")) {
+            $0.draft.info.title = "変更途中"
+        }
+        await store.send(.cancelButtonTapped)
     }
 
     @Test func タイトル変更で下書きのタイトルが更新されること() async {

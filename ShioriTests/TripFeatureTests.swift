@@ -43,7 +43,7 @@ struct TripFeatureTests {
         )
     }
 
-    @Test func State初期化とmakeTripで往復しても内容が保たれること() {
+    @Test func State初期化後にmakeTripを実行しても内容が保たれること() {
         let tripID = uuid()
         let dayID = uuid()
         let spot = makeSpot(id: uuid(), title: "浅草寺", hour: 10, minute: 0, durationMinutes: 30)

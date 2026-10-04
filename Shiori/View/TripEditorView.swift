@@ -13,6 +13,20 @@ struct TripEditorView: View {
                 Stepper(value: $store.draft.newNumDays.sending(\.numDaysChanged), in: 1...maxDayCount) {
                     Text("\(store.draft.newNumDays)日")
                 }
+                Button {
+                    store.send(.placeSearchButtonTapped)
+                } label: {
+                    HStack {
+                        LabeledContent("天気予報の場所", value: store.draft.info.weatherPlace?.name ?? "未設定")
+                        
+                        Image(systemName: "chevron.right")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+            .navigationDestination(item: $store.scope(state: \.placeSearch, action: \.placeSearch)) { placeSearchStore in
+                PlaceSearchView(store: placeSearchStore)
             }
             .navigationTitle("旅行を編集")
             .toolbar {
