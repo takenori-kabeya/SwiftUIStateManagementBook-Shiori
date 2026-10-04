@@ -7,9 +7,13 @@ struct TripsFeature {
     struct State: Equatable {
         var trips: IdentifiedArrayOf<TripFeature.State> = []
         var hasLoaded = false
+        @Presents var editTrip: TripEditFeature.State?
     }
     
     enum Action {
+        case editTrip(PresentationAction<TripEditFeature.Action>)
+        case editButtonTapped(Trip.ID)
+
         case trips(IdentifiedActionOf<TripFeature>)
         case addTrip(Trip)
         case deleteTrip(Trip.ID)
@@ -79,7 +83,30 @@ struct TripsFeature {
             case .saveFailed:
                 // TODO: 現段階ではエラー表示などを省略しているが後で追加する
                 return .none
+                
+            case let .editTrip(.presented(.delegate(.saveRequested(draft)))):
+                guard var tripState = state.trips[id: draft.id] else {
+                    return .none
+                }
+                tripState.info = draft.info
+                tripState.itinerary.itinerary.setDayCount(draft.newNumDays)
+                state.trips[id: draft.id] = tripState
+                return .send(.save)
+                
+            case .editTrip:
+                return .none
+                
+            case let .editButtonTapped(tripID):
+                guard let tripState = state.trips[id: tripID] else {
+                    return .none
+                }
+                let draft = TripDraft(info: tripState.info, itinerary: tripState.itinerary.itinerary)
+                state.editTrip = TripEditFeature.State(draft: draft)
+                return .none
             }
+        }
+        .ifLet(\.$editTrip, action: \.editTrip) {
+            TripEditFeature()
         }
         .forEach(\.trips, action: \.trips) {
             TripFeature()
