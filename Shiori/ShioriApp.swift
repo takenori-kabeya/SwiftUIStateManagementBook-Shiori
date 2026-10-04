@@ -15,7 +15,9 @@ struct ShioriApp: App {
 
     var body: some Scene {
         WindowGroup {
-            TripListView(tripPersistence: tripPersistence)
+            TripListView(store: Store(initialState: TripsFeature.State()) {
+                TripsFeature()
+            }, tripPersistence: tripPersistence)
         }
     }
 }

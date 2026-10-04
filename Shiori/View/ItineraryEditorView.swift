@@ -272,26 +272,13 @@ struct ConfirmedItineraryView: View {
 }
 
 struct ItineraryEditorView: View {
-    @Binding var itinerary: Itinerary
+    var store: StoreOf<ItineraryFeature>
     let tripStartDate: Date
-    @State private var store: StoreOf<ItineraryFeature>
     @State private var newTitle = ""
 
     @State private var editingSpot: Spot?
     @State private var editingDraft: SpotDraft = .empty
     @State private var spotPendingConfirmation: Spot?
-
-    init(itinerary: Binding<Itinerary>, tripStartDate: Date) {
-        self._itinerary = itinerary
-        self.tripStartDate = tripStartDate
-        self._store = State(
-            initialValue: Store(
-                initialState: ItineraryFeature.State(itinerary: itinerary.wrappedValue)
-            ) {
-                ItineraryFeature()
-            }
-        )
-    }
 
     private var timeMisalignedSpotIDs: Set<UUID> {
         store.itinerary.itineraryDays.reduce(into: Set<UUID>()) { result, day in
@@ -334,9 +321,6 @@ struct ItineraryEditorView: View {
             .padding()
         }
         .navigationTitle("旅程作成")
-        .onChange(of: store.itinerary) { _, newValue in
-            itinerary = newValue
-        }
         .confirmationDialog(
             "追加する日を選択",
             isPresented: Binding(
@@ -461,5 +445,8 @@ struct ItineraryEditorView: View {
 
 #Preview {
     @Previewable @State var trip = TripPersistence.defaultTrip
-    ItineraryEditorView(itinerary: $trip.itinerary, tripStartDate: trip.info.startDate)
+    ItineraryEditorView(store: Store(initialState: ItineraryFeature.State(
+        itinerary: trip.itinerary)) {
+            ItineraryFeature()
+        }, tripStartDate: trip.info.startDate)
 }

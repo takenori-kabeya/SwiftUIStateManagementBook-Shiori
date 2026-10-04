@@ -2,19 +2,19 @@ import SwiftUI
 import ComposableArchitecture
 
 struct TripDetailView: View {
-    @Binding var trip: Trip
+    var store: StoreOf<TripFeature>
 
     var body: some View {
         List {
             NavigationLink("旅程を編集") {
-                ItineraryEditorView(itinerary: $trip.itinerary, tripStartDate: trip.info.startDate)
+                ItineraryEditorView(store: store.scope(state: \.itinerary, action: \.itinerary), tripStartDate: store.info.startDate)
             }
             
             NavigationLink("旅程を見る") {
-                ItineraryViewerView(itinerary: trip.itinerary, tripStartDate: trip.info.startDate)
+                ItineraryViewerView(itinerary: store.itinerary.itinerary, tripStartDate: store.info.startDate)
             }
         }
-        .navigationTitle(trip.info.title)
+        .navigationTitle(store.info.title)
     }
 }
 
@@ -22,6 +22,8 @@ struct TripDetailView: View {
     @Previewable @State var trip = TripPersistence.defaultTrip
     
     NavigationStack {
-        TripDetailView(trip: $trip)
+        TripDetailView(store: Store(initialState: TripFeature.State(trip: trip)) {
+            TripFeature()
+        })
     }
 }

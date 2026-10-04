@@ -4,7 +4,10 @@ import ComposableArchitecture
 @Reducer
 struct TripFeature {
     @ObservableState
-    struct State: Equatable {
+    struct State: Equatable, Identifiable {
+        var id: UUID {
+            info.id
+        }
         var info: TripInfo
         var itinerary: ItineraryFeature.State
     }

@@ -1,7 +1,8 @@
 import SwiftUI
+import ComposableArchitecture
 
 struct TripListView: View {
-    @State private var trips: [Trip] = []
+    @State var store: StoreOf<TripsFeature>
     @State private var newTitle = ""
 
     @State private var editingTrip: Trip?
@@ -29,26 +30,24 @@ struct TripListView: View {
                     }
                     .alignmentGuide(.listRowSeparatorLeading) { _ in  0 }
 
-                    ForEach($trips) { $trip in
+                    ForEach(store.scope(state: \.trips, action: \.trips)) { childStore in
                         if (isEditing) {
                             HStack {
-                                Text(trip.info.title)
+                                Text(childStore.info.title)
                                 Spacer()
                                 Button("編集") {
-                                    startEditing(trip)
+                                    startEditing(childStore.state.makeTrip())
                                 }
                                 .buttonStyle(.borderless)
                                 Button("削除", role: .destructive) {
-                                    delete(trip)
+                                    delete(childStore.info.id)
                                 }
                                 .buttonStyle(.borderless)
                             }
                         }
                         else {
-                            NavigationLink(trip.info.title) {
-                                TripDetailView(
-                                    trip: $trip
-                                )
+                            NavigationLink(childStore.info.title) {
+                                TripDetailView(store: childStore)
                             }
                         }
                     }
@@ -66,7 +65,8 @@ struct TripListView: View {
                 guard !hasLoaded else { return }
                 
                 do {
-                    trips = try await tripPersistence.load()
+                    let trips = try await tripPersistence.load()
+                    store.send(.setTrips(trips))
                     hasLoaded = true
                 }
                 catch {
@@ -75,12 +75,8 @@ struct TripListView: View {
             }
             .onDisappear {
                 Task {
+                    let trips = store.trips.elements.map { $0.makeTrip() }
                     try? await tripPersistence.save(trips)
-                }
-            }
-            .onChange(of: trips) { _, newTrips in
-                Task {
-                    try? await tripPersistence.save(newTrips)
                 }
             }
             .isEditing(isEditing)
@@ -120,22 +116,21 @@ struct TripListView: View {
             return
         }
 
-        trips.append(
+        let trip =
             Trip(info: TripInfo(
                 id: UUID(),
                 title: title,
                 startDate: Date.now.date),
                 itinerary: Itinerary()
             )
-        )
+        
+        store.send(.addTrip(trip))
 
         newTitle = ""
     }
     
-    private func delete(_ trip: Trip) {
-        if let index = trips.firstIndex(of: trip) {
-            trips.remove(at: index)
-        }
+    private func delete(_ tripId: Trip.ID) {
+        store.send(.deleteTrip(tripId))
     }
 
     private func startEditing(_ trip: Trip) {
@@ -152,16 +147,18 @@ struct TripListView: View {
             return
         }
 
-        if let index = trips.firstIndex(where: { $0.id == trip.id }) {
-            trips[index].info.title = title
-            trips[index].info.startDate = editingStartDate
-            trips[index].itinerary.setDayCount(editingDayCount)
-            editingTrip = nil
-            return
-        }
+        var updatedTrip = trip
+        updatedTrip.info.title = title
+        updatedTrip.info.startDate = editingStartDate
+        updatedTrip.itinerary.setDayCount(editingDayCount)
+
+        store.send(.updateTrip(updatedTrip))
+        editingTrip = nil
     }
 }
 
 #Preview {
-    TripListView(tripPersistence: .mock)
+    TripListView(store: Store(initialState: TripsFeature.State()) {
+        TripsFeature()
+    }, tripPersistence: .mock)
 }
