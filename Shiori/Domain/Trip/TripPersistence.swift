@@ -37,10 +37,10 @@ extension TripPersistence {
     )
 
     nonisolated static var defaultTrip: Trip {
-        Trip(
+        Trip(info: TripInfo(
             id: UUID(),
             title: "東京観光",
-            startDate: Date.now.date,
+            startDate: Date.now.date),
             itinerary:
                 Itinerary(candidateSpots: [
                     Spot(id: UUID(), title: "東京タワー")
@@ -53,10 +53,10 @@ extension TripPersistence {
     }
     
     nonisolated static var uiTestTrip: Trip {
-        Trip(
+        Trip(info: TripInfo(
             id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
             title: "東京観光",
-            startDate: Date.now.date,
+            startDate: Date.now.date),
             itinerary:
                 Itinerary(
                     candidateSpots: [

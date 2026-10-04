@@ -2,10 +2,13 @@ import Foundation
 
 /// 旅行
 nonisolated struct Trip: Identifiable, Codable, Equatable {
-    let id: UUID
-    var title: String
-    var startDate: Date
+    var id: UUID {
+        info.id
+    }
+    /// 旅行情報
+    var info: TripInfo
     
     /// 旅程
     var itinerary: Itinerary
 }
+

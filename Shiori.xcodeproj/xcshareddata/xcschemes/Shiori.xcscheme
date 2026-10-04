@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "2700"
+   LastUpgradeVersion = "2660"
    version = "1.7">
    <BuildAction
       parallelizeBuildables = "YES"
@@ -17,6 +17,7 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "8D4EC72F303E95210042B199"
                BuildableName = "Shiori.app"
+               BlueprintName = "Shiori"
                ReferencedContainer = "container:Shiori.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -36,6 +37,7 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "8D4EC73C303E95240042B199"
                BuildableName = "ShioriTests.xctest"
+               BlueprintName = "ShioriTests"
                ReferencedContainer = "container:Shiori.xcodeproj">
             </BuildableReference>
          </TestableReference>
@@ -46,6 +48,7 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "8D4EC746303E95240042B199"
                BuildableName = "ShioriUITests.xctest"
+               BlueprintName = "ShioriUITests"
                ReferencedContainer = "container:Shiori.xcodeproj">
             </BuildableReference>
          </TestableReference>
@@ -61,16 +64,24 @@
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
       allowLocationSimulation = "YES"
-      queueDebuggingEnabled = "No">
+      queueDebuggingEnableBacktraceRecording = "Yes">
       <BuildableProductRunnable
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "8D4EC72F303E95210042B199"
             BuildableName = "Shiori.app"
+            BlueprintName = "Shiori"
             ReferencedContainer = "container:Shiori.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <EnvironmentVariables>
+         <EnvironmentVariable
+            key = "OS_ACTIVITY_MODE"
+            value = "disable"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+      </EnvironmentVariables>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -84,6 +95,7 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "8D4EC72F303E95210042B199"
             BuildableName = "Shiori.app"
+            BlueprintName = "Shiori"
             ReferencedContainer = "container:Shiori.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

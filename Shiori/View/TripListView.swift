@@ -32,7 +32,7 @@ struct TripListView: View {
                     ForEach($trips) { $trip in
                         if (isEditing) {
                             HStack {
-                                Text(trip.title)
+                                Text(trip.info.title)
                                 Spacer()
                                 Button("編集") {
                                     startEditing(trip)
@@ -45,7 +45,7 @@ struct TripListView: View {
                             }
                         }
                         else {
-                            NavigationLink(trip.title) {
+                            NavigationLink(trip.info.title) {
                                 TripDetailView(
                                     trip: $trip
                                 )
@@ -121,10 +121,10 @@ struct TripListView: View {
         }
 
         trips.append(
-            Trip(
+            Trip(info: TripInfo(
                 id: UUID(),
                 title: title,
-                startDate: Date.now.date,
+                startDate: Date.now.date),
                 itinerary: Itinerary()
             )
         )
@@ -140,8 +140,8 @@ struct TripListView: View {
 
     private func startEditing(_ trip: Trip) {
         editingTrip = trip
-        editingTitle = trip.title
-        editingStartDate = trip.startDate
+        editingTitle = trip.info.title
+        editingStartDate = trip.info.startDate
         editingDayCount = max(1, trip.itinerary.itineraryDays.count)
     }
     
@@ -153,8 +153,8 @@ struct TripListView: View {
         }
 
         if let index = trips.firstIndex(where: { $0.id == trip.id }) {
-            trips[index].title = title
-            trips[index].startDate = editingStartDate
+            trips[index].info.title = title
+            trips[index].info.startDate = editingStartDate
             trips[index].itinerary.setDayCount(editingDayCount)
             editingTrip = nil
             return

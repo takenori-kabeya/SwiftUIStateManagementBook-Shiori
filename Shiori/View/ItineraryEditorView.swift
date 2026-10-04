@@ -461,5 +461,5 @@ struct ItineraryEditorView: View {
 
 #Preview {
     @Previewable @State var trip = TripPersistence.defaultTrip
-    ItineraryEditorView(itinerary: $trip.itinerary, tripStartDate: trip.startDate)
+    ItineraryEditorView(itinerary: $trip.itinerary, tripStartDate: trip.info.startDate)
 }

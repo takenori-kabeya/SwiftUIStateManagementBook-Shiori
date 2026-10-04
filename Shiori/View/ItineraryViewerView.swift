@@ -139,6 +139,6 @@ struct ItineraryViewerView: View {
     @Previewable @State var trip = TripPersistence.defaultTrip
     
     NavigationStack {
-        ItineraryViewerView(itinerary: trip.itinerary, tripStartDate: trip.startDate)
+        ItineraryViewerView(itinerary: trip.itinerary, tripStartDate: trip.info.startDate)
     }
 }
