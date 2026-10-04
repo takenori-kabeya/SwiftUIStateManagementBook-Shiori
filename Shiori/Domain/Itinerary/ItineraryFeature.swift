@@ -5,9 +5,12 @@ struct ItineraryFeature {
     @ObservableState
     struct State: Equatable {
         var itinerary: Itinerary
+        @Presents var editSpot: SpotFeature.State?
     }
 
     enum Action {
+        case editSpot(PresentationAction<SpotFeature.Action>)
+
         case addCandidateButtonTapped(title: String)
         case confirmButtonTapped(spotID: Spot.ID, dayID: ItineraryDay.ID)
         case returnToCandidateButtonTapped(spotID: Spot.ID)
@@ -54,7 +57,18 @@ struct ItineraryFeature {
                 // 指定日の後続予定をずらす
                 state.itinerary.resolveScheduleConflicts(dayID: dayID)
                 return .none
+            case let .editSpot(.presented(.delegate(.saveRequested(draft)))):
+                state.itinerary.updateSpot(draft.spot())
+                return .none
+            case .editSpot(.dismiss):
+                // 特に何もしない
+                return .none
+            case .editSpot:
+                return .none
             }
+        }
+        .ifLet(\.$editSpot, action: \.editSpot) {
+            SpotFeature()
         }
     }
 }
