@@ -409,4 +409,374 @@ struct ItineraryFeatureTests {
 
         #expect(store.state.itinerary.candidateSpots == [original])
     }
+
+    @Test func 滞在を延ばして後続と重なるときずらし確認待ちになること() async {
+        let dayID = uuid()
+        let spotAID = uuid()
+        let spotBID = uuid()
+        let spotA = makeSpot(id: spotAID, title: "A", hour: 10, minute: 0, durationMinutes: 60)
+        let spotB = makeSpot(id: spotBID, title: "B", hour: 11, minute: 0, durationMinutes: 60)
+        let store = TestStore(
+            initialState: ItineraryFeature.State(
+                itinerary: Itinerary(
+                    candidateSpots: [],
+                    itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB])]
+                )
+            )
+        ) {
+            ItineraryFeature()
+        }
+
+        await store.send(.editButtonTapped(spotA)) {
+            $0.editSpot = SpotFeature.State(draft: SpotDraft(spot: spotA))
+        }
+        await store.send(.editSpot(.presented(.durationMinutesChanged(90)))) {
+            $0.editSpot?.draft.durationMinutes = 90
+        }
+
+        var expectedDraft = SpotDraft(spot: spotA)
+        expectedDraft.durationMinutes = 90
+        let extendedA = expectedDraft.spot()
+
+        await store.send(.editSpot(.presented(.saveButtonTapped)))
+        await store.receive(\.editSpot.presented.delegate.saveRequested) {
+            $0.itinerary.itineraryDays[0].spots[0] = extendedA
+            $0.scheduleShiftPending = ItineraryFeature.ScheduleShiftPending(
+                dayID: dayID,
+                fromSpotID: spotBID
+            )
+        }
+        await store.receive(\.editSpot.dismiss) {
+            $0.editSpot = nil
+        }
+
+        #expect(store.state.itinerary.itineraryDays[0].spots[1].startTime == SpotTime(hour: 11, minute: 0))
+    }
+
+    @Test func ずらし確定で後続の開始をずらし確認待ちをクリアすること() async {
+        let dayID = uuid()
+        let spotAID = uuid()
+        let spotBID = uuid()
+        let spotA = makeSpot(id: spotAID, title: "A", hour: 10, minute: 0, durationMinutes: 90)
+        let spotB = makeSpot(id: spotBID, title: "B", hour: 11, minute: 0, durationMinutes: 60)
+        let store = TestStore(
+            initialState: ItineraryFeature.State(
+                itinerary: Itinerary(
+                    candidateSpots: [],
+                    itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB])]
+                ),
+                scheduleShiftPending: ItineraryFeature.ScheduleShiftPending(
+                    dayID: dayID,
+                    fromSpotID: spotBID
+                )
+            )
+        ) {
+            ItineraryFeature()
+        }
+
+        await store.send(.scheduleShiftConfirmed) {
+            $0.itinerary.itineraryDays[0].spots[1].startTime = SpotTime(hour: 11, minute: 30)
+            $0.scheduleShiftPending = nil
+        }
+    }
+
+    @Test func ずらし確認を閉じるとずらさず確認待ちだけクリアすること() async {
+        let dayID = uuid()
+        let spotAID = uuid()
+        let spotBID = uuid()
+        let spotA = makeSpot(id: spotAID, title: "A", hour: 10, minute: 0, durationMinutes: 90)
+        let spotB = makeSpot(id: spotBID, title: "B", hour: 11, minute: 0, durationMinutes: 60)
+        let store = TestStore(
+            initialState: ItineraryFeature.State(
+                itinerary: Itinerary(
+                    candidateSpots: [],
+                    itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB])]
+                ),
+                scheduleShiftPending: ItineraryFeature.ScheduleShiftPending(
+                    dayID: dayID,
+                    fromSpotID: spotBID
+                )
+            )
+        ) {
+            ItineraryFeature()
+        }
+
+        await store.send(.scheduleShiftDismissed) {
+            $0.scheduleShiftPending = nil
+        }
+
+        #expect(store.state.itinerary.itineraryDays[0].spots[0].durationMinutes == 90)
+        #expect(store.state.itinerary.itineraryDays[0].spots[1].startTime == SpotTime(hour: 11, minute: 0))
+    }
+
+    @Test func 後続と重ならない延長ではずらし確認待ちにしないこと() async {
+        let dayID = uuid()
+        let spotA = makeSpot(id: uuid(), title: "A", hour: 10, minute: 0, durationMinutes: 30)
+        let spotB = makeSpot(id: uuid(), title: "B", hour: 12, minute: 0, durationMinutes: 60)
+        let store = TestStore(
+            initialState: ItineraryFeature.State(
+                itinerary: Itinerary(
+                    candidateSpots: [],
+                    itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB])]
+                )
+            )
+        ) {
+            ItineraryFeature()
+        }
+
+        await store.send(.editButtonTapped(spotA)) {
+            $0.editSpot = SpotFeature.State(draft: SpotDraft(spot: spotA))
+        }
+        await store.send(.editSpot(.presented(.durationMinutesChanged(60)))) {
+            $0.editSpot?.draft.durationMinutes = 60
+        }
+
+        var expectedDraft = SpotDraft(spot: spotA)
+        expectedDraft.durationMinutes = 60
+
+        await store.send(.editSpot(.presented(.saveButtonTapped)))
+        await store.receive(\.editSpot.presented.delegate.saveRequested) {
+            $0.itinerary.itineraryDays[0].spots[0] = expectedDraft.spot()
+        }
+        await store.receive(\.editSpot.dismiss) {
+            $0.editSpot = nil
+        }
+
+        #expect(store.state.scheduleShiftPending == nil)
+    }
+
+    @Test func 滞在を短くしてもずらし確認待ちにしないこと() async {
+        let dayID = uuid()
+        let spotA = makeSpot(id: uuid(), title: "A", hour: 10, minute: 0, durationMinutes: 90)
+        let spotB = makeSpot(id: uuid(), title: "B", hour: 11, minute: 0, durationMinutes: 60)
+        let store = TestStore(
+            initialState: ItineraryFeature.State(
+                itinerary: Itinerary(
+                    candidateSpots: [],
+                    itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB])]
+                )
+            )
+        ) {
+            ItineraryFeature()
+        }
+
+        await store.send(.editButtonTapped(spotA)) {
+            $0.editSpot = SpotFeature.State(draft: SpotDraft(spot: spotA))
+        }
+        await store.send(.editSpot(.presented(.durationMinutesChanged(60)))) {
+            $0.editSpot?.draft.durationMinutes = 60
+        }
+
+        var expectedDraft = SpotDraft(spot: spotA)
+        expectedDraft.durationMinutes = 60
+
+        await store.send(.editSpot(.presented(.saveButtonTapped)))
+        await store.receive(\.editSpot.presented.delegate.saveRequested) {
+            $0.itinerary.itineraryDays[0].spots[0] = expectedDraft.spot()
+        }
+        await store.receive(\.editSpot.dismiss) {
+            $0.editSpot = nil
+        }
+
+        #expect(store.state.scheduleShiftPending == nil)
+    }
+
+    @Test func 最後の行き先の滞在を延ばしてもずらし確認待ちにしないこと() async {
+        let dayID = uuid()
+        let spotA = makeSpot(id: uuid(), title: "A", hour: 10, minute: 0, durationMinutes: 60)
+        let store = TestStore(
+            initialState: ItineraryFeature.State(
+                itinerary: Itinerary(
+                    candidateSpots: [],
+                    itineraryDays: [ItineraryDay(id: dayID, spots: [spotA])]
+                )
+            )
+        ) {
+            ItineraryFeature()
+        }
+
+        await store.send(.editButtonTapped(spotA)) {
+            $0.editSpot = SpotFeature.State(draft: SpotDraft(spot: spotA))
+        }
+        await store.send(.editSpot(.presented(.durationMinutesChanged(120)))) {
+            $0.editSpot?.draft.durationMinutes = 120
+        }
+
+        var expectedDraft = SpotDraft(spot: spotA)
+        expectedDraft.durationMinutes = 120
+
+        await store.send(.editSpot(.presented(.saveButtonTapped)))
+        await store.receive(\.editSpot.presented.delegate.saveRequested) {
+            $0.itinerary.itineraryDays[0].spots[0] = expectedDraft.spot()
+        }
+        await store.receive(\.editSpot.dismiss) {
+            $0.editSpot = nil
+        }
+
+        #expect(store.state.scheduleShiftPending == nil)
+    }
+
+    @Test func 終了が前倒しでも後続と重なるときはずらし確認待ちにしないこと() async {
+        let dayID = uuid()
+        let spotA = makeSpot(id: uuid(), title: "A", hour: 10, minute: 0, durationMinutes: 120)
+        let spotB = makeSpot(id: uuid(), title: "B", hour: 11, minute: 0, durationMinutes: 60)
+        let store = TestStore(
+            initialState: ItineraryFeature.State(
+                itinerary: Itinerary(
+                    candidateSpots: [],
+                    itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB])]
+                )
+            )
+        ) {
+            ItineraryFeature()
+        }
+
+        await store.send(.editButtonTapped(spotA)) {
+            $0.editSpot = SpotFeature.State(draft: SpotDraft(spot: spotA))
+        }
+        await store.send(.editSpot(.presented(.durationMinutesChanged(90)))) {
+            $0.editSpot?.draft.durationMinutes = 90
+        }
+
+        var expectedDraft = SpotDraft(spot: spotA)
+        expectedDraft.durationMinutes = 90
+
+        await store.send(.editSpot(.presented(.saveButtonTapped)))
+        await store.receive(\.editSpot.presented.delegate.saveRequested) {
+            $0.itinerary.itineraryDays[0].spots[0] = expectedDraft.spot()
+        }
+        await store.receive(\.editSpot.dismiss) {
+            $0.editSpot = nil
+        }
+
+        #expect(store.state.itinerary.itineraryDays[0].spots[0].durationMinutes == 90)
+        #expect(store.state.itinerary.itineraryDays[0].spots[1].startTime == SpotTime(hour: 11, minute: 0))
+        #expect(store.state.scheduleShiftPending == nil)
+    }
+
+    @Test func 後ろ倒し後に先行と重なっても後続と重ならなければずらし確認待ちにしないこと() async {
+        let dayID = uuid()
+        let spotA = makeSpot(id: uuid(), title: "A", hour: 10, minute: 0, durationMinutes: 90)
+        let spotB = makeSpot(id: uuid(), title: "B", hour: 11, minute: 0, durationMinutes: 60)
+        let spotC = makeSpot(id: uuid(), title: "C", hour: 13, minute: 0, durationMinutes: 60)
+        let store = TestStore(
+            initialState: ItineraryFeature.State(
+                itinerary: Itinerary(
+                    candidateSpots: [],
+                    itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB, spotC])]
+                )
+            )
+        ) {
+            ItineraryFeature()
+        }
+
+        await store.send(.editButtonTapped(spotB)) {
+            $0.editSpot = SpotFeature.State(draft: SpotDraft(spot: spotB))
+        }
+        await store.send(.editSpot(.presented(.durationMinutesChanged(90)))) {
+            $0.editSpot?.draft.durationMinutes = 90
+        }
+
+        var expectedDraft = SpotDraft(spot: spotB)
+        expectedDraft.durationMinutes = 90
+
+        await store.send(.editSpot(.presented(.saveButtonTapped)))
+        await store.receive(\.editSpot.presented.delegate.saveRequested) {
+            $0.itinerary.itineraryDays[0].spots[1] = expectedDraft.spot()
+        }
+        await store.receive(\.editSpot.dismiss) {
+            $0.editSpot = nil
+        }
+
+        #expect(store.state.itinerary.itineraryDays[0].spots[0] == spotA)
+        #expect(store.state.itinerary.itineraryDays[0].spots[1].durationMinutes == 90)
+        #expect(store.state.itinerary.itineraryDays[0].spots[2] == spotC)
+        #expect(store.state.scheduleShiftPending == nil)
+    }
+
+    @Test func 予定時刻を後ろにずらして後続と重なるとき変更を反映しずらし確認待ちになること() async {
+        let dayID = uuid()
+        let spotAID = uuid()
+        let spotBID = uuid()
+        let spotA = makeSpot(id: spotAID, title: "A", hour: 10, minute: 0, durationMinutes: 60)
+        let spotB = makeSpot(id: spotBID, title: "B", hour: 11, minute: 0, durationMinutes: 60)
+        let store = TestStore(
+            initialState: ItineraryFeature.State(
+                itinerary: Itinerary(
+                    candidateSpots: [],
+                    itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB])]
+                )
+            )
+        ) {
+            ItineraryFeature()
+        }
+
+        var components = DateComponents()
+        components.year = 2024
+        components.month = 1
+        components.day = 1
+        components.hour = 10
+        components.minute = 30
+        let newStart = Calendar.current.date(from: components)!
+
+        await store.send(.editButtonTapped(spotA)) {
+            $0.editSpot = SpotFeature.State(draft: SpotDraft(spot: spotA))
+        }
+        await store.send(.editSpot(.presented(.startTimeChanged(newStart)))) {
+            $0.editSpot?.draft.startTime = newStart
+        }
+
+        var expectedDraft = SpotDraft(spot: spotA)
+        expectedDraft.startTime = newStart
+        let shiftedA = expectedDraft.spot()
+
+        await store.send(.editSpot(.presented(.saveButtonTapped)))
+        await store.receive(\.editSpot.presented.delegate.saveRequested) {
+            $0.itinerary.itineraryDays[0].spots[0] = shiftedA
+            $0.scheduleShiftPending = ItineraryFeature.ScheduleShiftPending(
+                dayID: dayID,
+                fromSpotID: spotBID
+            )
+        }
+        await store.receive(\.editSpot.dismiss) {
+            $0.editSpot = nil
+        }
+
+        #expect(store.state.itinerary.itineraryDays[0].spots[0].startTime == SpotTime(hour: 10, minute: 30))
+        #expect(store.state.itinerary.itineraryDays[0].spots[0].durationMinutes == 60)
+        #expect(store.state.itinerary.itineraryDays[0].spots[1].startTime == SpotTime(hour: 11, minute: 0))
+    }
+
+    @Test func ずらし確定で変更した行き先より前は変えず後続だけずらすこと() async {
+        let dayID = uuid()
+        let spotAID = uuid()
+        let spotBID = uuid()
+        let spotCID = uuid()
+        let spotA = makeSpot(id: spotAID, title: "A", hour: 10, minute: 0, durationMinutes: 90)
+        let spotB = makeSpot(id: spotBID, title: "B", hour: 11, minute: 0, durationMinutes: 60)
+        let spotC = makeSpot(id: spotCID, title: "C", hour: 12, minute: 0, durationMinutes: 60)
+        let store = TestStore(
+            initialState: ItineraryFeature.State(
+                itinerary: Itinerary(
+                    candidateSpots: [],
+                    itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB, spotC])]
+                ),
+                scheduleShiftPending: ItineraryFeature.ScheduleShiftPending(
+                    dayID: dayID,
+                    fromSpotID: spotBID
+                )
+            )
+        ) {
+            ItineraryFeature()
+        }
+
+        await store.send(.scheduleShiftConfirmed) {
+            $0.itinerary.itineraryDays[0].spots[1].startTime = SpotTime(hour: 11, minute: 30)
+            $0.itinerary.itineraryDays[0].spots[2].startTime = SpotTime(hour: 12, minute: 30)
+            $0.scheduleShiftPending = nil
+        }
+
+        #expect(store.state.itinerary.itineraryDays[0].spots[0].startTime == SpotTime(hour: 10, minute: 0))
+        #expect(store.state.itinerary.itineraryDays[0].spots[0].durationMinutes == 90)
+    }
 }

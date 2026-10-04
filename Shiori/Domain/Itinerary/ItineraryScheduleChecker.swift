@@ -58,6 +58,30 @@ nonisolated enum ItineraryScheduleChecker {
         return conflicting
     }
 
+    /// 開始時刻がある Spot について、終了境界（duration なしは開始時刻）が後ろへ伸びたかどうか
+    static func isScheduleExtension(from old: Spot, to new: Spot) -> Bool {
+        guard let oldEnd = exclusiveEndMinutes(of: old),
+              let newEnd = exclusiveEndMinutes(of: new) else {
+            return false
+        }
+        return newEnd > oldEnd
+    }
+
+    /// `spot` が `subsequent` 内のいずれかの予定と重なるかどうか
+    static func conflictsWithSubsequent(spot: Spot, subsequent: [Spot]) -> Bool {
+        guard let spotSlot = scheduleSlot(for: spot) else {
+            return false
+        }
+        for other in subsequent {
+            guard let otherSlot = scheduleSlot(for: other),
+                  slotsConflict(spotSlot, otherSlot) else {
+                continue
+            }
+            return true
+        }
+        return false
+    }
+
     private enum ScheduleSlot {
         case point(minutes: Int)
         case interval(start: Int, end: Int)
@@ -89,5 +113,17 @@ nonisolated enum ItineraryScheduleChecker {
 
     private static func minutesSinceMidnight(from date: SpotTime) -> Int {
         return (date.hour * 60 + date.minute)
+    }
+
+    /// duration あり: start + duration / duration なし: start（point の終了境界）
+    private static func exclusiveEndMinutes(of spot: Spot) -> Int? {
+        guard let startTime = spot.startTime else {
+            return nil
+        }
+        let startMinutes = minutesSinceMidnight(from: startTime)
+        if let durationMinutes = spot.durationMinutes {
+            return startMinutes + durationMinutes
+        }
+        return startMinutes
     }
 }

@@ -355,6 +355,25 @@ struct ItineraryEditorView: View {
                 store.send(.deleteConfirmationDismissed)
             }
         }
+        .confirmationDialog(
+            "重なっている後続の予定を自動でずらしますか？",
+            isPresented: Binding(
+                get: { store.scheduleShiftPending != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        store.send(.scheduleShiftDismissed)
+                    }
+                }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("はい") {
+                store.send(.scheduleShiftConfirmed)
+            }
+            Button("いいえ") {
+                store.send(.scheduleShiftDismissed)
+            }
+        }
         .sheet(item: $store.scope(state: \.editSpot, action: \.editSpot)) { spotStore in
             SpotEditorView(store: spotStore)
         }

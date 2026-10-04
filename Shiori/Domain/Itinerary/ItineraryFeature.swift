@@ -5,12 +5,18 @@ struct ItineraryFeature {
     struct DaySelectionState: Equatable {
         var spot: Spot
     }
+
+    struct ScheduleShiftPending: Equatable {
+        var dayID: ItineraryDay.ID
+        var fromSpotID: Spot.ID
+    }
     
     @ObservableState
     struct State: Equatable {
         var itinerary: Itinerary
         @Presents var editSpot: SpotFeature.State?
         var daySelection: DaySelectionState?
+        var scheduleShiftPending: ScheduleShiftPending?
         var spotPendingDeletion: Spot.ID?
     }
 
@@ -29,7 +35,8 @@ struct ItineraryFeature {
         case deleteConfirmed
         case deleteConfirmationDismissed
         case autoShiftButtonTapped(dayID: ItineraryDay.ID)
-
+        case scheduleShiftConfirmed
+        case scheduleShiftDismissed
         case daySelected(dayID: ItineraryDay.ID)
         case daySelectionDismissed
     }
@@ -76,8 +83,27 @@ struct ItineraryFeature {
                 // 指定日の後続予定をずらす
                 state.itinerary.resolveScheduleConflicts(dayID: dayID)
                 return .none
+            case .scheduleShiftConfirmed:
+                guard let pending = state.scheduleShiftPending else {
+                    return .none
+                }
+                state.itinerary.resolveScheduleConflicts(dayID: pending.dayID, fromSpotID: pending.fromSpotID)
+                state.scheduleShiftPending = nil
+                return .none
+            case .scheduleShiftDismissed:
+                state.scheduleShiftPending = nil
+                return .none
             case let .editSpot(.presented(.delegate(.saveRequested(draft)))):
-                state.itinerary.updateSpot(draft.spot())
+                guard let previous = state.itinerary.spot(id: draft.id) else {
+                    return .none
+                }
+                let updated = draft.spot()
+                state.itinerary.updateSpot(updated)
+                state.scheduleShiftPending = scheduleShiftPendingIfNeeded(
+                    itinerary: state.itinerary,
+                    previous: previous,
+                    updated: updated
+                )
                 return .none
             case .editSpot(.dismiss):
                 // 特に何もしない
@@ -102,5 +128,29 @@ struct ItineraryFeature {
         .ifLet(\.$editSpot, action: \.editSpot) {
             SpotFeature()
         }
+    }
+
+    private func scheduleShiftPendingIfNeeded(
+        itinerary: Itinerary,
+        previous: Spot,
+        updated: Spot
+    ) -> ScheduleShiftPending? {
+        guard ItineraryScheduleChecker.isScheduleExtension(from: previous, to: updated),
+              let location = itinerary.confirmedSpotLocation(spotID: updated.id),
+              let day = itinerary.itineraryDays.first(where: { $0.id == location.dayID }),
+              location.spotIndex + 1 < day.spots.count else {
+            return nil
+        }
+
+        let saved = day.spots[location.spotIndex]
+        let subsequent = Array(day.spots[(location.spotIndex + 1)...])
+        guard ItineraryScheduleChecker.conflictsWithSubsequent(spot: saved, subsequent: subsequent) else {
+            return nil
+        }
+
+        return ScheduleShiftPending(
+            dayID: location.dayID,
+            fromSpotID: subsequent[0].id
+        )
     }
 }

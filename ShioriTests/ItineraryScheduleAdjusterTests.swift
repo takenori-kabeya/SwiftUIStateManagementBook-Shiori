@@ -149,4 +149,74 @@ struct ItineraryScheduleAdjusterTests {
         #expect(adjusted[1].memo == "メモ\n2行目")
         #expect(adjusted[1].startTime == SpotTime(hour: 11, minute: 30))
     }
+
+    @Test func 指定インデックス以降で直後だけ重なるとき直後だけずらすこと() {
+        let idA = uuid()
+        let idB = uuid()
+        let spots = [
+            makeSpot(id: idA, title: "A", hour: 10, minute: 0, durationMinutes: 90),
+            makeSpot(id: idB, title: "B", hour: 11, minute: 0, durationMinutes: 60),
+        ]
+
+        let adjusted = ItineraryScheduleAdjuster.resolvingConflictsByShiftingStartTimes(in: spots, fromIndex: 1)
+
+        #expect(adjusted[0].startTime == SpotTime(hour: 10, minute: 0))
+        #expect(adjusted[0].durationMinutes == 90)
+        #expect(adjusted[1].id == idB)
+        #expect(adjusted[1].startTime == SpotTime(hour: 11, minute: 30))
+        #expect(adjusted[1].durationMinutes == 60)
+    }
+
+    @Test func 指定インデックス以降で連鎖してずらすこと() {
+        let idA = uuid()
+        let idB = uuid()
+        let idC = uuid()
+        let spots = [
+            makeSpot(id: idA, title: "A", hour: 10, minute: 0, durationMinutes: 90),
+            makeSpot(id: idB, title: "B", hour: 11, minute: 0, durationMinutes: 60),
+            makeSpot(id: idC, title: "C", hour: 12, minute: 0, durationMinutes: 60),
+        ]
+
+        let adjusted = ItineraryScheduleAdjuster.resolvingConflictsByShiftingStartTimes(in: spots, fromIndex: 1)
+
+        #expect(adjusted[0].id == idA)
+        #expect(adjusted[0].startTime == SpotTime(hour: 10, minute: 0))
+        #expect(adjusted[1].startTime == SpotTime(hour: 11, minute: 30))
+        #expect(adjusted[2].startTime == SpotTime(hour: 12, minute: 30))
+    }
+
+    @Test func 指定インデックス以降で連鎖が切れたらその先の重なりは解消しないこと() {
+        let idC = uuid()
+        let idD = uuid()
+        let spots = [
+            makeSpot(id: uuid(), title: "A", hour: 10, minute: 0, durationMinutes: 90),
+            makeSpot(id: uuid(), title: "B", hour: 11, minute: 0, durationMinutes: 60),
+            makeSpot(id: idC, title: "C", hour: 13, minute: 0, durationMinutes: 60),
+            makeSpot(id: idD, title: "D", hour: 13, minute: 30, durationMinutes: 60),
+        ]
+
+        let adjusted = ItineraryScheduleAdjuster.resolvingConflictsByShiftingStartTimes(in: spots, fromIndex: 1)
+
+        #expect(adjusted[0].startTime == SpotTime(hour: 10, minute: 0))
+        #expect(adjusted[1].startTime == SpotTime(hour: 11, minute: 30))
+        #expect(adjusted[2].id == idC)
+        #expect(adjusted[2].startTime == SpotTime(hour: 13, minute: 0))
+        #expect(adjusted[3].id == idD)
+        #expect(adjusted[3].startTime == SpotTime(hour: 13, minute: 30))
+    }
+
+    @Test func 指定インデックス以降で時刻未設定は変えず後ろの判定を続けること() {
+        let untimedID = uuid()
+        let spots = [
+            makeSpot(id: uuid(), title: "A", hour: 10, minute: 0, durationMinutes: 90),
+            makeSpot(id: untimedID, title: "Untimed"),
+            makeSpot(id: uuid(), title: "B", hour: 11, minute: 0, durationMinutes: 60),
+        ]
+
+        let adjusted = ItineraryScheduleAdjuster.resolvingConflictsByShiftingStartTimes(in: spots, fromIndex: 1)
+
+        #expect(adjusted[1].id == untimedID)
+        #expect(adjusted[1].startTime == nil)
+        #expect(adjusted[2].startTime == SpotTime(hour: 11, minute: 30))
+    }
 }

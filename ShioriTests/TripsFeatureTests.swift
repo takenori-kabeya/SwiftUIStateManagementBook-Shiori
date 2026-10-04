@@ -210,4 +210,80 @@ struct TripsFeatureTests {
             $0.hasLoaded = true
         }
     }
+
+    @Test func editTripの保存で一致する旅行に下書きを反映すること() async {
+        let tripID = uuid()
+        let trip = makeTrip(
+            id: tripID,
+            title: "旧",
+            itinerary: Itinerary(
+                candidateSpots: [],
+                itineraryDays: [ItineraryDay(id: uuid())]
+            )
+        )
+        let store = TestStore(
+            initialState: TripsFeature.State(trips: [TripFeature.State(trip: trip)])
+        ) {
+            TripsFeature()
+        } withDependencies: {
+            $0.tripPersistence = .testValue
+        }
+
+        await store.send(.editButtonTapped(tripID)) {
+            $0.editTrip = TripEditFeature.State(draft: TripDraft(info: trip.info, itinerary: trip.itinerary))
+        }
+        await store.send(.editTrip(.presented(.titleChanged("新")))) {
+            $0.editTrip?.draft.info.title = "新"
+        }
+
+        var saved = trip
+        saved.info.title = "新"
+
+        await store.send(.editTrip(.presented(.saveButtonTapped)))
+        await store.receive(\.editTrip.presented.delegate.saveRequested) {
+            $0.trips[id: tripID]?.info = saved.info
+        }
+        await store.receive(\.save)
+        await store.receive(\.editTrip.dismiss) {
+            $0.editTrip = nil
+        }
+        await store.receive(\.saveCompleted)
+
+        #expect(store.state.trips[id: tripID]?.info.title == "新")
+        #expect(store.state.editTrip == nil)
+    }
+    
+    @Test func editTripのキャンセルで元の旅行を変えないこと() async {
+        let tripID = uuid()
+        let trip = makeTrip(
+            id: tripID,
+            title: "元のタイトル",
+            itinerary: Itinerary(
+                candidateSpots: [],
+                itineraryDays: [ItineraryDay(id: uuid())]
+            )
+        )
+        let store = TestStore(
+            initialState: TripsFeature.State(trips: [TripFeature.State(trip: trip)])
+        ) {
+            TripsFeature()
+        } withDependencies: {
+            $0.tripPersistence = .testValue
+        }
+
+        await store.send(.editButtonTapped(tripID)) {
+            $0.editTrip = TripEditFeature.State(draft: TripDraft(info: trip.info, itinerary: trip.itinerary))
+        }
+        await store.send(.editTrip(.presented(.titleChanged("破棄される変更")))) {
+            $0.editTrip?.draft.info.title = "破棄される変更"
+        }
+        await store.send(.editTrip(.presented(.cancelButtonTapped)))
+        await store.receive(\.editTrip.dismiss) {
+            $0.editTrip = nil
+        }
+
+        #expect(store.state.trips[id: tripID]?.info.title == "元のタイトル")
+        #expect(store.state.trips[id: tripID]?.id == trip.id)
+        #expect(store.state.editTrip == nil)
+    }
 }

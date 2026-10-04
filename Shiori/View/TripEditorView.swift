@@ -60,5 +60,4 @@ struct TripEditorView: View {
         let titleText = titles.joined(separator: "、")
         return "次の行き先は最終日に移動します: \(titleText)"
     }
-
 }

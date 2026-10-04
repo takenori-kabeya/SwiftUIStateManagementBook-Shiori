@@ -80,6 +80,21 @@ nonisolated struct Itinerary: Codable, Equatable {
             .resolvingConflictsByShiftingStartTimes(in: itineraryDays[dayIndex].spots)
     }
 
+    /// 指定日の、指定 Spot 以降の予定重なりだけを開始時刻を後ろへずらして解消する
+    ///
+    /// 指定 Spot より前の予定は変更しない。未知の `dayID` / `spotID` の場合は何もしない
+    mutating func resolveScheduleConflicts(dayID: ItineraryDay.ID, fromSpotID: Spot.ID) {
+        guard let dayIndex = itineraryDays.firstIndex(where: { $0.id == dayID }),
+              let fromIndex = itineraryDays[dayIndex].spots.firstIndex(where: { $0.id == fromSpotID }) else {
+            return
+        }
+        itineraryDays[dayIndex].spots = ItineraryScheduleAdjuster
+            .resolvingConflictsByShiftingStartTimes(
+                in: itineraryDays[dayIndex].spots,
+                fromIndex: fromIndex
+            )
+    }
+
     /// 候補の末尾に行き先を追加する
     ///
     /// タイトルは前後空白を除去する。空文字の場合は何もしない

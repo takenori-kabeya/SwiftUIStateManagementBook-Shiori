@@ -37,6 +37,10 @@ nonisolated struct Spot: Identifiable, Codable, Equatable  {
     var durationMinutes: Int?
     var memo: String = ""
     var endTime: SpotTime? {
+        return Spot.calcEndTime(startTime: startTime, durationMinutes: durationMinutes)
+    }
+    
+    static func calcEndTime(startTime: SpotTime?, durationMinutes: Int?) -> SpotTime? {
         guard let startTime, let durationMinutes, 0 < durationMinutes else {
             return nil
         }
@@ -103,5 +107,11 @@ nonisolated struct SpotDraft: Equatable {
             startTime: self.hasStartTime ? SpotTime.fromDate(self.startTime) : nil,
             durationMinutes: self.hasDurationMinutes ? self.durationMinutes : nil,
             memo: self.memo)
+    }
+    
+    var endTime: SpotTime? {
+        return Spot.calcEndTime(
+            startTime: self.hasStartTime ? SpotTime.fromDate(self.startTime) : nil,
+            durationMinutes: self.hasDurationMinutes ? self.durationMinutes : nil)
     }
 }
