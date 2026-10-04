@@ -64,6 +64,17 @@ nonisolated struct Itinerary: Codable, Equatable {
         itineraryDays[lastKeptIndex].spots.append(contentsOf: spotsToMove)
     }
 
+    /// 指定日の予定重なりを、開始時刻を後ろへずらして解消する
+    ///
+    /// 未知の `dayID` の場合は何もしない
+    mutating func resolveScheduleConflicts(dayID: ItineraryDay.ID) {
+        guard let dayIndex = itineraryDays.firstIndex(where: { $0.id == dayID }) else {
+            return
+        }
+        itineraryDays[dayIndex].spots = ItineraryScheduleAdjuster
+            .resolvingConflictsByShiftingStartTimes(in: itineraryDays[dayIndex].spots)
+    }
+
     /// 候補の `spotID` を指定した日の末尾へ確定する
     ///
     /// - Parameters:
