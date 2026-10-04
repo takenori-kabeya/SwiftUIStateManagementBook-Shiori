@@ -62,30 +62,11 @@ struct TripListView: View {
             }
             .isEditing(isEditing)
             .sheet(item: $editingTrip) { trip in
-                NavigationStack {
-                    Form {
-                        TextField("旅行名", text: $editingTitle)
-                        DatePicker("開始日", selection: $editingStartDate, displayedComponents: .date)
-                        let maxDayCount = max(10, trip.itinerary.itineraryDays.count)
-                        Stepper(value: $editingDayCount, in: 1...maxDayCount) {
-                            Text("\(editingDayCount)日")
-                        }
-                    }
-                    .navigationTitle("旅行を編集")
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("キャンセル") {
-                                editingTrip = nil
-                            }
-                        }
-
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("保存") {
-                                updateTrip(trip)
-                            }
-                        }
-                    }
-                }
+                TripEditorView(store: store,
+                               editingTrip: $editingTrip,
+                               editingTitle: trip.info.title,
+                               editingStartDate: trip.info.startDate,
+                               editingDayCount: trip.itinerary.itineraryDays.count)
             }
         }
     }
@@ -124,21 +105,7 @@ struct TripListView: View {
         editingDayCount = max(1, trip.itinerary.itineraryDays.count)
     }
     
-    private func updateTrip(_ trip: Trip) {
-        let title = editingTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard !title.isEmpty else {
-            return
-        }
-
-        var updatedTrip = trip
-        updatedTrip.info.title = title
-        updatedTrip.info.startDate = editingStartDate
-        updatedTrip.itinerary.setDayCount(editingDayCount)
-
-        store.send(.updateTrip(updatedTrip))
-        editingTrip = nil
-    }
+    
 }
 
 #Preview {
