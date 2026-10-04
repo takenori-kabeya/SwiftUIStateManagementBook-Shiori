@@ -42,7 +42,7 @@ nonisolated struct Itinerary: Codable, Equatable {
         try container.encode(candidateSpots, forKey: .candidateSpots)
         try container.encode(itineraryDays, forKey: .itineraryDays)
     }
-
+    
     /// 旅程の日数を増減する
     ///
     /// - 増やす: 末尾に空の `ItineraryDay` を追加する

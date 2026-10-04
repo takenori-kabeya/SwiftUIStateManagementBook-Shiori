@@ -336,7 +336,7 @@ struct ItineraryEditorView: View {
             }
             Button("キャンセル", role: .cancel) {}
         }
-        .sheet(item: $store.scope(state: \.editSpot, action: \.editSpot)) { spotStore in
+        .sheet(item: $store.scope(\.editSpot, action: \.editSpot)) { spotStore in
             SpotEditorView(store: spotStore)
         }
     }

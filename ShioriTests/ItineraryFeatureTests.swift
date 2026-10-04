@@ -286,6 +286,25 @@ struct ItineraryFeatureTests {
         }
     }
 
+    @Test func 行き先更新で一致する行き先を置き換えること() async {
+        let spotID = uuid()
+        let updated = makeSpot(id: spotID, title: "新")
+        let store = TestStore(
+            initialState: ItineraryFeature.State(
+                itinerary: Itinerary(
+                    candidateSpots: [makeSpot(id: spotID, title: "旧")],
+                    itineraryDays: [ItineraryDay(id: uuid())]
+                )
+            )
+        ) {
+            ItineraryFeature()
+        }
+
+        await store.send(.spotUpdated(updated)) {
+            $0.itinerary.candidateSpots = [updated]
+        }
+    }
+
     @Test func 削除で確定済み行き先を取り除くこと() async {
         let spotID = uuid()
         let store = TestStore(
