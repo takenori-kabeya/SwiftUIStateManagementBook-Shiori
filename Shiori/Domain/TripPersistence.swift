@@ -31,16 +31,38 @@ extension TripPersistence {
         }
     )
     
+    static let uiTest = TripPersistence(
+        load: { [uiTestTrip] },
+        save: { _ in }
+    )
+
     nonisolated static var defaultTrip: Trip {
         return Trip(id: UUID(), title: "東京観光", itinerary:
                         Itinerary(candidateSpots: [
                             Spot(id: UUID(), title: "東京タワー")
                         ], confirmedSpots: [
-                            Spot(id: UUID(), title: "浅草寺", startTime: getTime(hour: 10, minute: 30), durationMinutes: 30 ,memo: "お土産を買う"),
+                            Spot(id: UUID(), title: "浅草寺", startTime: Date.now, durationMinutes: 30 ,memo: "お土産を買う"),
                             Spot(id: UUID(), title: "スカイツリー")
                         ]))
     }
     
+    nonisolated static var uiTestTrip: Trip {
+        Trip(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+            title: "東京観光",
+            itinerary: Itinerary(
+                candidateSpots: [
+                    Spot(id: UUID(uuidString: "00000000-0000-0000-0000-000000000010")!, title: "東京タワー", memo: "")
+                ],
+                confirmedSpots: [
+                    Spot(id: UUID(uuidString: "00000000-0000-0000-0000-000000000021")!, title: "上野", startTime: getTime(hour: 14, minute: 0), durationMinutes: 60, memo: ""),
+                    Spot(id: UUID(uuidString: "00000000-0000-0000-0000-000000000022")!, title: "浅草寺", startTime: getTime(hour: 10, minute: 0), durationMinutes: 120, memo: ""),
+                    Spot(id: UUID(uuidString: "00000000-0000-0000-0000-000000000023")!, title: "スカイツリー", startTime: getTime(hour: 11, minute: 0), durationMinutes: 60, memo: "")
+                    ]
+            )
+        )
+    }
+
     nonisolated static func getTime(hour: Int, minute: Int) -> Date {
         if let date = DateComponents(calendar: .current, year: 2000, hour: hour, minute: minute).date {
             return date

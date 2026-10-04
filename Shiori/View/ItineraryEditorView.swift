@@ -56,6 +56,7 @@ struct CandidateSpotsView: View {
                         onAdd()
                     }
                     .disabled(newTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityIdentifier("候補に追加")
                 }
                 
                 VStack(spacing: 8) {
@@ -73,31 +74,13 @@ struct CandidateSpotsView: View {
     }
 }
 
-struct TimelineMarkerView: View {
-    let index: Int
-    let isLast: Bool
-
-    var body: some View {
-        VStack(spacing: 4) {
-            Text("\(index + 1)")
-                .font(.caption)
-                .frame(width: 24, height: 24)
-
-            if !isLast {
-                Rectangle()
-                    .frame(width: 1)
-                    .frame(height: 40)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-}
-
 struct ItinerarySpotRow: View {
     let spot: Spot
     let index: Int
     let isLast: Bool
     let isReordering: Bool
+    let isTimeOrderMisaligned: Bool
+    let isTimeConflict: Bool
     
     let onMoveUp: () -> Void
     let onMoveDown: () -> Void
@@ -106,25 +89,13 @@ struct ItinerarySpotRow: View {
     let onDelete: () -> Void
     
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            TimelineMarkerView(index: index, isLast: isLast)
-                .frame(width: 32)
-            
-            VStack(alignment: .leading, spacing: 6) {
-                Text(spot.title)
-                    .font(.headline)
-                
-                Text(spot.stayTimeDisplayText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                
-                if !spot.memo.isEmpty {
-                    Text(spot.memo)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+        ItinerarySpotDisplayRow(
+            spot: spot,
+            index: index,
+            isLast: isLast,
+            isTimeOrderMisaligned: isTimeOrderMisaligned,
+            isTimeConflict: isTimeConflict
+        ) {
             VStack {
                 Spacer()
                 HStack(alignment: .center) {
@@ -173,6 +144,8 @@ struct ItinerarySpotRow: View {
 
 struct ConfirmedItineraryView: View {
     let spots: [Spot]
+    let misalignedSpotIDs: Set<UUID>
+    let conflictingSpotIDs: Set<UUID>
 
     let onMoveUp: (Spot) -> Void
     let onMoveDown: (Spot) -> Void
@@ -199,6 +172,16 @@ struct ConfirmedItineraryView: View {
                     }
                 }
             }
+            if !conflictingSpotIDs.isEmpty {
+                Text("予定時間が重なっている行き先があります")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+            if !misalignedSpotIDs.isEmpty {
+                Text("並び順と到着時刻が一致していない行き先があります")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
             VStack(spacing: 12) {
                 ForEach(Array(spots.enumerated()), id: \.element.id) { index, spot in
                     ItinerarySpotRow(
@@ -206,6 +189,8 @@ struct ConfirmedItineraryView: View {
                         index: index,
                         isLast: index == spots.count - 1,
                         isReordering: isReordering,
+                        isTimeOrderMisaligned: misalignedSpotIDs.contains(spot.id),
+                        isTimeConflict: conflictingSpotIDs.contains(spot.id),
                         onMoveUp: { withAnimation { onMoveUp(spot) } },
                         onMoveDown: { withAnimation { onMoveDown(spot) } },
                         onReturnToCandidates: { onReturnToCandidate(spot) },
@@ -226,6 +211,13 @@ struct ItineraryEditorView: View {
     @State private var editingSpot: Spot?
     @State private var editingDraft: SpotDraft = .empty
 
+    private var timeMisalignedSpotIDs: Set<UUID> {
+        ItineraryScheduleChecker.misalignedSpotIDs(in: itinerary.confirmedSpots)
+    }
+
+    private var timeConflictingSpotIDs: Set<UUID> {
+        ItineraryScheduleChecker.conflictingSpotIDs(in: itinerary.confirmedSpots)
+    }
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
@@ -238,6 +230,8 @@ struct ItineraryEditorView: View {
                     onDelete: delete)
                ConfirmedItineraryView(
                     spots: itinerary.confirmedSpots,
+                    misalignedSpotIDs: timeMisalignedSpotIDs,
+                    conflictingSpotIDs: timeConflictingSpotIDs,
                     onMoveUp: moveConfirmedSpotUp,
                     onMoveDown: moveConfirmedSpotDown,
                     onReturnToCandidate: unconfirm,

@@ -5,28 +5,17 @@ enum ItinerarySpotStatus {
     case current
     case next
 }
-struct ItineraryRowView: View {
-    let index: Int
-    let spot: Spot
-    let status: ItinerarySpotStatus
-    
-    var body: some View {
-        HStack {
-            Text("\(index + 1)")
-            Text(spot.title)
-            Spacer()
-            if status == .current {
-                Text("現在")
-            }
-            else if status == .next {
-                Text("次")
-            }
-        }
-    }
-}
 
 struct ItineraryViewerView: View {
     let itinerary: Itinerary
+
+    private var misalignedSpotIDs: Set<UUID> {
+        ItineraryScheduleChecker.misalignedSpotIDs(in: itinerary.confirmedSpots)
+    }
+
+    private var conflictingSpotIDs: Set<UUID> {
+        ItineraryScheduleChecker.conflictingSpotIDs(in: itinerary.confirmedSpots)
+    }
 
     var body: some View {
         ScrollView {
@@ -42,15 +31,59 @@ struct ItineraryViewerView: View {
                     Text("旅程全体")
                         .font(.title3)
                     
-                    ForEach(Array(itinerary.confirmedSpots.enumerated()), id: \.element.id) { index, spot in
-                        ItineraryRowView(index: index, spot: spot, status: currentSpot == spot ? .current :
-                                            (nextSpot == spot ? .next : .none))
+                    if !conflictingSpotIDs.isEmpty {
+                        Text("予定時間が重なっている行き先があります")
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                    if !misalignedSpotIDs.isEmpty {
+                        Text("並び順と到着時刻が一致していない行き先があります")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
+
+                    VStack(spacing: 12) {
+                        ForEach(Array(itinerary.confirmedSpots.enumerated()), id: \.element.id) { index, spot in
+                            ItinerarySpotDisplayRow(
+                                spot: spot,
+                                index: index,
+                                isLast: index == itinerary.confirmedSpots.count - 1,
+                                isTimeOrderMisaligned: misalignedSpotIDs.contains(spot.id),
+                                isTimeConflict: conflictingSpotIDs.contains(spot.id)
+                            ) {
+                                statusBadge(for: spot)
+                            }
+                        }
                     }
                 }
                 .padding()
             }
         }
         .navigationTitle("旅程を見る")
+    }
+
+    @ViewBuilder
+    private func statusBadge(for spot: Spot) -> some View {
+        let status = spotStatus(for: spot)
+        VStack {
+            Spacer()
+            if status == .current {
+                Text("現在")
+            } else if status == .next {
+                Text("次")
+            }
+            Spacer()
+        }
+    }
+
+    private func spotStatus(for spot: Spot) -> ItinerarySpotStatus {
+        if currentSpot?.id == spot.id {
+            return .current
+        }
+        if nextSpot?.id == spot.id {
+            return .next
+        }
+        return .none
     }
     
     private var currentSpot: Spot? {
