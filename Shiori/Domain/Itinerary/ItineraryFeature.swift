@@ -2,10 +2,15 @@ import ComposableArchitecture
 
 @Reducer
 struct ItineraryFeature {
+    struct DaySelectionState: Equatable {
+        var spot: Spot
+    }
+    
     @ObservableState
     struct State: Equatable {
         var itinerary: Itinerary
         @Presents var editSpot: SpotFeature.State?
+        var daySelection: DaySelectionState?
     }
 
     enum Action {
@@ -13,7 +18,7 @@ struct ItineraryFeature {
         case editButtonTapped(Spot)
 
         case addCandidateButtonTapped(title: String)
-        case confirmButtonTapped(spotID: Spot.ID, dayID: ItineraryDay.ID)
+        case confirmButtonTapped(Spot)
         case returnToCandidateButtonTapped(spotID: Spot.ID)
         case moveUpButtonTapped(spotID: Spot.ID)
         case moveDownButtonTapped(spotID: Spot.ID)
@@ -21,6 +26,9 @@ struct ItineraryFeature {
         case moveToNextDayButtonTapped(spotID: Spot.ID)
         case deleteButtonTapped(spotID: Spot.ID)
         case autoShiftButtonTapped(dayID: ItineraryDay.ID)
+
+        case daySelected(dayID: ItineraryDay.ID)
+        case daySelectionDismissed
     }
 
     var body: some Reducer<State, Action> {
@@ -29,8 +37,8 @@ struct ItineraryFeature {
             case let .addCandidateButtonTapped(title):
                 state.itinerary.addCandidate(title: title)
                 return .none
-            case let .confirmButtonTapped(spotID, dayID):
-                state.itinerary.confirmCandidate(spotID: spotID, toDayID: dayID)
+            case let .confirmButtonTapped(spot):
+                state.daySelection = DaySelectionState(spot: spot)
                 return .none
             case let .returnToCandidateButtonTapped(spotID):
                 state.itinerary.returnSpotToCandidates(spotID: spotID)
@@ -62,9 +70,18 @@ struct ItineraryFeature {
                 return .none
             case .editSpot:
                 return .none
-
             case let .editButtonTapped(spot):
                 state.editSpot = SpotFeature.State(draft: SpotDraft(spot: spot))
+                return .none
+            case let .daySelected(dayID):
+                guard let spot = state.daySelection?.spot else {
+                    return .none
+                }
+                state.itinerary.confirmCandidate(spotID: spot.id, toDayID: dayID)
+                state.daySelection = nil
+                return .none
+            case .daySelectionDismissed:
+                state.daySelection = nil
                 return .none
             }
         }

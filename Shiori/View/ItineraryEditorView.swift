@@ -276,8 +276,6 @@ struct ItineraryEditorView: View {
     let tripStartDate: Date
     @State private var newTitle = ""
 
-    @State private var spotPendingConfirmation: Spot?
-
     private var timeMisalignedSpotIDs: Set<UUID> {
         store.itinerary.itineraryDays.reduce(into: Set<UUID>()) { result, day in
             result.formUnion(ItineraryScheduleChecker.misalignedSpotIDs(in: day.spots))
@@ -297,7 +295,7 @@ struct ItineraryEditorView: View {
                     spots: store.itinerary.candidateSpots,
                     onAdd: addCandidate,
                     onAddToItinerary: { spot in
-                        spotPendingConfirmation = spot
+                        store.send(.confirmButtonTapped(spot))
                     },
                     onEdit: startEditing,
                     onDelete: delete)
@@ -322,25 +320,21 @@ struct ItineraryEditorView: View {
         .confirmationDialog(
             "追加する日を選択",
             isPresented: Binding(
-                get: { spotPendingConfirmation != nil },
+                get: { store.daySelection != nil },
                 set: { isPresented in
                     if !isPresented {
-                        spotPendingConfirmation = nil
+                        store.send(.daySelectionDismissed)
                     }
                 }
             ),
             titleVisibility: .visible
         ) {
-            if let spot = spotPendingConfirmation {
-                ForEach(Array(store.itinerary.itineraryDays.enumerated()), id: \.element.id) { dayIndex, day in
-                    Button("\(dayIndex + 1)日目") {
-                        confirm(spot, dayID: day.id)
-                    }
-                }
-                Button("キャンセル", role: .cancel) {
-                    spotPendingConfirmation = nil
+            ForEach(Array(store.itinerary.itineraryDays.enumerated()), id: \.element.id) { dayIndex, day in
+                Button("\(dayIndex + 1)日目") {
+                    store.send(.daySelected(dayID: day.id))
                 }
             }
+            Button("キャンセル", role: .cancel) {}
         }
         .sheet(item: $store.scope(state: \.editSpot, action: \.editSpot)) { spotStore in
             SpotEditorView(store: spotStore)
@@ -356,11 +350,6 @@ struct ItineraryEditorView: View {
         guard !trimmed.isEmpty else { return }
         store.send(.addCandidateButtonTapped(title: trimmed))
         newTitle = ""
-    }
-
-    private func confirm(_ spot: Spot, dayID: ItineraryDay.ID) {
-        store.send(.confirmButtonTapped(spotID: spot.id, dayID: dayID))
-        spotPendingConfirmation = nil
     }
 
     private func unconfirm(_ spot: Spot) {
