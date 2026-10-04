@@ -9,7 +9,7 @@ struct TripListView: View {
     @State var isEditing: Bool = false
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
             List {
                 Section {
                     HStack {
@@ -22,25 +22,26 @@ struct TripListView: View {
                     }
                     .alignmentGuide(.listRowSeparatorLeading) { _ in  0 }
 
-                    ForEach(store.scope(state: \.trips, action: \.trips)) { tripStore in
+                    ForEach(store.trips) { trip in
                         if (isEditing) {
                             HStack {
-                                Text(tripStore.trip.info.title)
+                                Text(trip.info.title)
                                 Spacer()
                                 Button("編集") {
-                                    store.send(.editButtonTapped(tripStore.trip.info.id))
+                                    store.send(.editButtonTapped(trip.info.id))
                                 }
                                 .buttonStyle(.borderless)
                                 Button("削除", role: .destructive) {
-                                    delete(tripStore.trip.info.id)
+                                    delete(trip.info.id)
                                 }
                                 .buttonStyle(.borderless)
                             }
                         }
                         else {
-                            NavigationLink(tripStore.trip.info.title) {
-                                TripDetailView(store: tripStore)
+                            Button(trip.info.title) {
+                                store.send(.tripTapped(trip.id))
                             }
+                            .buttonStyle(.navigationRow)
                         }
                     }
                 } header: {
@@ -59,6 +60,11 @@ struct TripListView: View {
             .isEditing(isEditing)
             .sheet(item: $store.scope(state: \.editTrip, action: \.editTrip)) { editStore in
                 TripEditorView(store: editStore)
+            }
+        } destination: { childStore in
+            switch (childStore.case) {
+            case let .tripDetail(detailStore):
+                TripDetailView(store: detailStore)
             }
         }
     }
@@ -95,7 +101,7 @@ struct TripListView: View {
 }
 
 #Preview {
-    TripListView(store: Store(initialState: TripsFeature.State()) {
+    TripListView(store: Store(initialState: TripsFeature.State(trips: Shared(value: []))) {
         TripsFeature()
     })
 }

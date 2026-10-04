@@ -64,17 +64,6 @@ struct TripFeature {
 }
 
 extension TripFeature.State {
-    init(trip: Trip) {
-        let sharedTrip = Shared(value: trip)
-        self._trip = sharedTrip
-        self.itinerary = ItineraryFeature.State(
-            itinerary: sharedTrip.itinerary
-        )
-        self.weatherForecast = WeatherForecastFeature.State(
-            forecastCondition: Self.forecastCondition(from: trip)
-        )
-    }
-    
     init(trip: Shared<Trip>) {
         self._trip = trip
         self.itinerary = ItineraryFeature.State(

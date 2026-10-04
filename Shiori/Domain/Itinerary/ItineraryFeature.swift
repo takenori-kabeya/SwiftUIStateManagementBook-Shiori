@@ -18,36 +18,6 @@ struct ItineraryFeature {
         var daySelection: DaySelectionState?
         var scheduleShiftPending: ScheduleShiftPending?
         var spotPendingDeletion: Spot.ID?
-    
-        init(
-            itinerary: Shared<Itinerary>,
-            editSpot: SpotFeature.State? = nil,
-            daySelection: DaySelectionState? = nil,
-            spotPendingDeletion: Spot.ID? = nil,
-            scheduleShiftPending: ScheduleShiftPending? = nil
-        ) {
-            self._itinerary = itinerary
-            self.editSpot = editSpot
-            self.daySelection = daySelection
-            self.spotPendingDeletion = spotPendingDeletion
-            self.scheduleShiftPending = scheduleShiftPending
-        }
-
-        init(
-            itinerary: Itinerary,
-            editSpot: SpotFeature.State? = nil,
-            daySelection: DaySelectionState? = nil,
-            spotPendingDeletion: Spot.ID? = nil,
-            scheduleShiftPending: ScheduleShiftPending? = nil
-        ) {
-            self.init(
-                itinerary: Shared(value: itinerary),
-                editSpot: editSpot,
-                daySelection: daySelection,
-                spotPendingDeletion: spotPendingDeletion,
-                scheduleShiftPending: scheduleShiftPending
-            )
-        }
     }
     enum Action {
         case editSpot(PresentationAction<SpotFeature.Action>)
@@ -213,5 +183,21 @@ struct ItineraryFeature {
             dayID: location.dayID,
             fromSpotID: subsequent[0].id
         )
+    }
+}
+
+extension ItineraryFeature.State {
+    init(
+        itinerary: Shared<Itinerary>,
+        editSpot: SpotFeature.State? = nil,
+        daySelection: ItineraryFeature.DaySelectionState? = nil,
+        spotPendingDeletion: Spot.ID? = nil,
+        scheduleShiftPending: ItineraryFeature.ScheduleShiftPending? = nil
+    ) {
+        self._itinerary = itinerary
+        self.editSpot = editSpot
+        self.daySelection = daySelection
+        self.spotPendingDeletion = spotPendingDeletion
+        self.scheduleShiftPending = scheduleShiftPending
     }
 }

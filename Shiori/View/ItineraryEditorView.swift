@@ -435,7 +435,7 @@ struct ItineraryEditorView: View {
 #Preview {
     @Previewable @State var trip = Trip.previewTrip
     ItineraryEditorView(store: Store(initialState: ItineraryFeature.State(
-        itinerary: trip.itinerary)) {
+        itinerary: Shared(value: trip.itinerary))) {
             ItineraryFeature()
         }, tripStartDate: trip.info.startDate)
 }

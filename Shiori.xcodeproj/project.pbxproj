@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		8D014FD9304EB39500A19037 /* DependenciesTestSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 8D014FD8304EB39500A19037 /* DependenciesTestSupport */; };
+		8D13F069306B36EB000D8985 /* TCACompatibility in Frameworks */ = {isa = PBXBuildFile; productRef = 8D13F068306B36EB000D8985 /* TCACompatibility */; };
 		8D6F46D1304909FE00BA2E02 /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 8D6F46D0304909FE00BA2E02 /* ComposableArchitecture */; };
 /* End PBXBuildFile section */
 
@@ -57,6 +58,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8D13F069306B36EB000D8985 /* TCACompatibility in Frameworks */,
 				8D6F46D1304909FE00BA2E02 /* ComposableArchitecture in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -120,6 +122,7 @@
 			name = Shiori;
 			packageProductDependencies = (
 				8D6F46D0304909FE00BA2E02 /* ComposableArchitecture */,
+				8D13F068306B36EB000D8985 /* TCACompatibility */,
 			);
 			productName = Shiori;
 			productReference = 8D4EC730303E95210042B199 /* Shiori.app */;
@@ -207,6 +210,7 @@
 			packageReferences = (
 				8D6F46CF304909FE00BA2E02 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
 				8D014FD7304EB39500A19037 /* XCRemoteSwiftPackageReference "swift-dependencies" */,
+				8D13F067306B36EB000D8985 /* XCLocalSwiftPackageReference "LocalPackages/TCACompatibility" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8D4EC731303E95210042B199 /* Products */;
@@ -598,6 +602,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		8D13F067306B36EB000D8985 /* XCLocalSwiftPackageReference "LocalPackages/TCACompatibility" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = LocalPackages/TCACompatibility;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		8D014FD7304EB39500A19037 /* XCRemoteSwiftPackageReference "swift-dependencies" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -624,6 +635,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8D014FD7304EB39500A19037 /* XCRemoteSwiftPackageReference "swift-dependencies" */;
 			productName = DependenciesTestSupport;
+		};
+		8D13F068306B36EB000D8985 /* TCACompatibility */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TCACompatibility;
 		};
 		8D6F46D0304909FE00BA2E02 /* ComposableArchitecture */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -26,7 +26,7 @@ struct TripDetailView: View {
     @Previewable @State var trip = Trip.previewTrip
     
     NavigationStack {
-        TripDetailView(store: Store(initialState: TripFeature.State(trip: trip)) {
+        TripDetailView(store: Store(initialState: TripFeature.State(trip: Shared(value: trip))) {
             TripFeature()
         })
     }

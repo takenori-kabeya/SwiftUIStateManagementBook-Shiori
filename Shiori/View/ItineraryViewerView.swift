@@ -205,7 +205,7 @@ struct ItineraryViewerView: View {
     
     NavigationStack {
         ItineraryViewerView(
-            store: Store(initialState: ItineraryFeature.State(itinerary: trip.itinerary)) {
+            store: Store(initialState: ItineraryFeature.State(itinerary: Shared(value: trip.itinerary))) {
                 ItineraryFeature()
             },
             weatherForecastStore: Store(initialState: WeatherForecastFeature.State(

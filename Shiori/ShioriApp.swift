@@ -4,7 +4,7 @@ import ComposableArchitecture
 @main
 struct ShioriApp: App {
     private static let store: StoreOf<TripsFeature> = Store(
-        initialState: TripsFeature.State()
+        initialState: TripsFeature.State(trips: Shared(value: []))
     ) {
         TripsFeature()
     } withDependencies: {
