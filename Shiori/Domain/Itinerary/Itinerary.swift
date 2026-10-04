@@ -75,21 +75,122 @@ nonisolated struct Itinerary: Codable, Equatable {
             .resolvingConflictsByShiftingStartTimes(in: itineraryDays[dayIndex].spots)
     }
 
+    /// 候補の末尾に行き先を追加する
+    ///
+    /// タイトルは前後空白を除去する。空文字の場合は何もしない
+    mutating func addCandidate(title: String) {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        candidateSpots.append(
+            Spot(
+                id: UUID(),
+                title: trimmed,
+                memo: ""
+            )
+        )
+    }
+
     /// 候補の `spotID` を指定した日の末尾へ確定する
     ///
     /// - Parameters:
     ///   - spotID: 候補にある `Spot` の ID
-    ///   - toDayIndex: 追加先の日インデックス
+    ///   - toDayID: 追加先の日 ID
     ///
-    /// 日インデックスは範囲外の場合はクランプする。未知の ID の場合は何もしない
-    mutating func confirmCandidate(spotID: UUID, toDayIndex: Int) {
-        guard let index = candidateSpots.firstIndex(where: { $0.id == spotID }) else {
+    /// 未知の `spotID` または `toDayID` の場合は何もしない
+    mutating func confirmCandidate(spotID: UUID, toDayID: ItineraryDay.ID) {
+        guard let candidateIndex = candidateSpots.firstIndex(where: { $0.id == spotID }) else {
+            return
+        }
+        guard let toDay = itineraryDays.firstIndex(where: { $0.id == toDayID }) else {
             return
         }
 
-        let toDay = min(max(0, toDayIndex), itineraryDays.count - 1)
-        let spot = candidateSpots.remove(at: index)
+        let spot = candidateSpots.remove(at: candidateIndex)
         itineraryDays[toDay].spots.append(spot)
+    }
+
+    /// 確定済みの `spotID` を候補の末尾へ戻す
+    ///
+    /// 未知の ID の場合は何もしない
+    mutating func returnSpotToCandidates(spotID: UUID) {
+        guard let location = locationOfSpot(spotID: spotID) else { return }
+
+        let spot = itineraryDays[location.dayIndex].spots.remove(at: location.spotIndex)
+        candidateSpots.append(spot)
+    }
+
+    /// 候補・確定の両方から `spotID` を削除する
+    ///
+    /// 未知の ID の場合は何もしない
+    mutating func deleteSpot(spotID: UUID) {
+        candidateSpots.removeAll { $0.id == spotID }
+        for dayIndex in itineraryDays.indices {
+            itineraryDays[dayIndex].spots.removeAll { $0.id == spotID }
+        }
+    }
+
+    /// 同 ID の行き先を候補または確定内で置換する
+    ///
+    /// タイトル（前後空白除去後）が空、または未知の ID の場合は何もしない
+    mutating func updateSpot(_ spot: Spot) {
+        let trimmedTitle = spot.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { return }
+
+        var updated = spot
+        updated.title = trimmedTitle
+
+        if let index = candidateSpots.firstIndex(where: { $0.id == spot.id }) {
+            candidateSpots[index] = updated
+            return
+        }
+
+        if let location = locationOfSpot(spotID: spot.id) {
+            itineraryDays[location.dayIndex].spots[location.spotIndex] = updated
+        }
+    }
+
+    /// 確定行き先をフラット順で1つ上と入れ替える
+    ///
+    /// 先頭、または未知の ID の場合は何もしない
+    mutating func moveConfirmedSpotUp(spotID: UUID) {
+        guard let globalIndex = globalIndexOfConfirmedSpot(spotID: spotID) else { return }
+        guard globalIndex > 0 else { return }
+
+        swapConfirmedSpots(from: globalIndex, to: globalIndex - 1)
+    }
+
+    /// 確定行き先をフラット順で1つ下と入れ替える
+    ///
+    /// 末尾、または未知の ID の場合は何もしない
+    mutating func moveConfirmedSpotDown(spotID: UUID) {
+        guard let globalIndex = globalIndexOfConfirmedSpot(spotID: spotID) else { return }
+        let flatCount = itineraryDays.reduce(0) { $0 + $1.spots.count }
+        guard globalIndex < flatCount - 1 else { return }
+
+        swapConfirmedSpots(from: globalIndex, to: globalIndex + 1)
+    }
+
+    /// 確定行き先を前日の末尾へ移動する
+    ///
+    /// 初日、または未知の ID の場合は何もしない
+    mutating func moveSpotToPreviousDay(spotID: UUID) {
+        guard let location = locationOfSpot(spotID: spotID) else { return }
+        let previousDayIndex = location.dayIndex - 1
+        guard previousDayIndex >= 0 else { return }
+
+        moveSpot(spotID: spotID, toDayIndex: previousDayIndex, toSpotIndex: nil)
+    }
+
+    /// 確定行き先を翌日の末尾へ移動する
+    ///
+    /// 最終日、または未知の ID の場合は何もしない
+    mutating func moveSpotToNextDay(spotID: UUID) {
+        guard let location = locationOfSpot(spotID: spotID) else { return }
+        let nextDayIndex = location.dayIndex + 1
+        guard nextDayIndex < itineraryDays.count else { return }
+
+        moveSpot(spotID: spotID, toDayIndex: nextDayIndex, toSpotIndex: nil)
     }
 
     /// `spotID` を指定した日に移動する（必要なら挿入位置も指定する）
@@ -135,5 +236,33 @@ nonisolated struct Itinerary: Codable, Equatable {
             }
         }
         return nil
+    }
+
+    private func globalIndexOfConfirmedSpot(spotID: UUID) -> Int? {
+        var index = 0
+        for day in itineraryDays {
+            for element in day.spots {
+                if element.id == spotID {
+                    return index
+                }
+                index += 1
+            }
+        }
+        return nil
+    }
+
+    private mutating func swapConfirmedSpots(from i: Int, to j: Int) {
+        guard i != j else { return }
+
+        let dayCounts = itineraryDays.map { $0.spots.count }
+        var flat = itineraryDays.flatMap(\.spots)
+        flat.swapAt(i, j)
+
+        var cursor = 0
+        for dayIndex in itineraryDays.indices {
+            let count = dayCounts[dayIndex]
+            itineraryDays[dayIndex].spots = Array(flat[cursor..<(cursor + count)])
+            cursor += count
+        }
     }
 }
