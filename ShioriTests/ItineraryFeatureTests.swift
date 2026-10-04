@@ -8,6 +8,7 @@ import DependenciesTestSupport
 @Suite(
     .dependencies {
         $0.uuid = .incrementing
+        $0.date = .constant(Date(timeIntervalSince1970: 0))
     }
 )
 @MainActor
@@ -121,10 +122,54 @@ struct ItineraryFeatureTests {
             ItineraryFeature()
         }
 
-        await store.send(.confirmButtonTapped(spotID: candidateID, dayID: day1ID)) {
+        await store.send(.confirmButtonTapped(candidate)) {
+            $0.daySelection = ItineraryFeature.DaySelectionState(spot: candidate)
+        }
+        await store.send(.daySelected(dayID: day1ID)) {
             $0.itinerary.candidateSpots = []
             $0.itinerary.itineraryDays[1].spots = [candidate]
+            $0.daySelection = nil
         }
+    }
+    
+    @Test func 日選択を閉じると候補は追加せず選択状態だけクリアすること() async {
+        let candidateID = uuid()
+        let dayID = uuid()
+        let candidate = makeSpot(
+            id: candidateID,
+            title: "候補"
+        )
+
+        let store = TestStore(
+            initialState: ItineraryFeature.State(
+                itinerary: Itinerary(
+                    candidateSpots: [candidate],
+                    itineraryDays: [
+                        ItineraryDay(id: dayID)
+                    ]
+                )
+            )
+        ) {
+            ItineraryFeature()
+        }
+        
+        await store.send(.confirmButtonTapped(candidate)) {
+            $0.daySelection =
+                ItineraryFeature.DaySelectionState(
+                    spot: candidate
+                )
+        }
+
+        await store.send(.daySelectionDismissed) {
+            $0.daySelection = nil
+        }
+
+        #expect(
+            store.state.itinerary.candidateSpots == [candidate]
+        )
+        #expect(
+            store.state.itinerary.itineraryDays[0].spots.isEmpty
+        )
     }
 
     @Test func 候補へ戻すと確定済み行き先を候補へ戻すこと() async {
@@ -257,5 +302,69 @@ struct ItineraryFeatureTests {
         await store.send(.deleteButtonTapped(spotID: spotID)) {
             $0.itinerary.itineraryDays[0].spots = []
         }
+    }
+
+    @Test func 編集して保存すると旅程を更新し編集状態をクリアすること() async {
+        let spotID = uuid()
+        let original = makeSpot(id: spotID, title: "旧", hour: 10, minute: 0, durationMinutes: 60)
+        let store = TestStore(
+            initialState: ItineraryFeature.State(
+                itinerary: Itinerary(
+                    candidateSpots: [original],
+                    itineraryDays: [ItineraryDay(id: uuid())]
+                )
+            )
+        ) {
+            ItineraryFeature()
+        }
+
+        await store.send(.editButtonTapped(original)) {
+            $0.editSpot = SpotFeature.State(draft: SpotDraft(spot: original))
+        }
+
+        await store.send(.editSpot(.presented(.titleChanged("新")))) {
+            $0.editSpot?.draft.title = "新"
+        }
+
+        var expectedDraft = SpotDraft(spot: original)
+        expectedDraft.title = "新"
+
+        await store.send(.editSpot(.presented(.saveButtonTapped)))
+        await store.receive(\.editSpot.delegate.presented.saveRequested) {
+            $0.itinerary.candidateSpots = [expectedDraft.spot()]
+        }
+        await store.receive(\.editSpot.dismiss) {
+            $0.editSpot = nil
+        }
+    }
+
+    @Test func 編集をキャンセルすると旅程は変えず編集状態だけクリアすること() async {
+        let spotID = uuid()
+        let original = makeSpot(id: spotID, title: "旧", hour: 10, minute: 0, durationMinutes: 60)
+        let store = TestStore(
+            initialState: ItineraryFeature.State(
+                itinerary: Itinerary(
+                    candidateSpots: [original],
+                    itineraryDays: [ItineraryDay(id: uuid())]
+                )
+            )
+        ) {
+            ItineraryFeature()
+        }
+
+        await store.send(.editButtonTapped(original)) {
+            $0.editSpot = SpotFeature.State(draft: SpotDraft(spot: original))
+        }
+
+        await store.send(.editSpot(.presented(.titleChanged("変更途中")))) {
+            $0.editSpot?.draft.title = "変更途中"
+        }
+
+        await store.send(.editSpot(.presented(.cancelButtonTapped)))
+        await store.receive(\.editSpot.dismiss) {
+            $0.editSpot = nil
+        }
+
+        #expect(store.state.itinerary.candidateSpots == [original])
     }
 }
