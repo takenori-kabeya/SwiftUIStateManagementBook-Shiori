@@ -438,32 +438,4 @@ struct WeatherForecastFeatureCancellationTests {
         }
         await store.finish()
     }
-    
-    @Test func viewDisappearedで取得をキャンセルすること() async {
-        let gate = FetchGate<DailyWeatherForecast>()
-        let existingForecasts = [makeForecast(date: "2026-07-31")]
-        let forecastsToFetch = [makeForecast(date: "2026-08-01")]
-        let store = makeStoreWithGate(gate: gate, initialForecasts: existingForecasts)
-
-        await store.send(.refreshRequested) {
-            $0.isFetching = true
-            $0.errorMessage = nil
-        }
-        await gate.waitUntilFetchCallCount(1)
-        
-        #expect(!gate.cancelledCallIndices.contains(0))
-        #expect(store.state.errorMessage == nil)
-        #expect(store.state.isFetching == true)
-        #expect(store.state.dailyForecasts == existingForecasts)
-
-        await store.send(.viewDisappeared) {
-            $0.isFetching = false
-        }
-        await gate.waitUntilCancelled(at: 0)
-        #expect(gate.cancelledCallIndices.contains(0))
-        
-        gate.resume(at: 0, with: .success(forecastsToFetch))
-        
-        await store.finish()
-    }
 }

@@ -71,7 +71,7 @@ struct TripFeatureTests {
         )
 
         let state = TripFeature.State(trip: Shared(value: trip))
-        let restored = state.makeTrip()
+        let restored = state.trip
 
         #expect(state.id == tripID)
         #expect(state.trip.info == trip.info)
@@ -87,21 +87,23 @@ struct TripFeatureTests {
                 itineraryDays: [ItineraryDay(id: dayID)]
             )
         )
-        let store = TestStore(initialState: TripFeature.State(trip: Shared(value: trip))) {
-            TripFeature()
+        let sharedTrip = Shared(value: trip)
+        let store = TestStore(initialState: ItineraryFeature.State(
+            itinerary: sharedTrip.itinerary,
+            tripStartDate: sharedTrip.info.startDate
+        )) {
+            ItineraryFeature()
         }
         let spotID = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!  // 1の次なので2になるはず
         let spotTitle = "新候補"
-        await store.send(.itinerary(.addCandidateButtonTapped(title: spotTitle))) {
-            $0.itinerary.$itinerary.withLock {
+        await store.send(.addCandidateButtonTapped(title: spotTitle)) {
+            $0.$itinerary.withLock {
                 $0.candidateSpots.append(Spot(id: spotID, title: spotTitle))
             }
         }
-        await store.receive(\.itinerary.delegate.itineraryUpdated)
-        await store.receive(\.delegate.tripUpdated)
-
-        #expect(store.state.itinerary.itinerary.candidateSpots.map(\.title) == ["新候補"])
-        #expect(store.state.trip.info == trip.info)
+        await store.receive(\.delegate.itineraryUpdated)
+        
+        #expect(store.state.itinerary.candidateSpots.map(\.title) == ["新候補"])
     }
 
     @Test func 自動シフトで時間重なりを解消すること() async {
@@ -121,18 +123,19 @@ struct TripFeatureTests {
                 ]
             )
         )
-        let store = TestStore(initialState: TripFeature.State(trip: Shared(value: trip))) {
-            TripFeature()
+        let sharedTrip = Shared(value: trip)
+        let store = TestStore(initialState: ItineraryFeature.State(
+            itinerary: sharedTrip.itinerary,
+            tripStartDate: sharedTrip.info.startDate)) {
+            ItineraryFeature()
         }
 
-        await store.send(.itinerary(.autoShiftButtonTapped(dayID: dayID))) {
-            $0.itinerary.$itinerary.withLock {
+        await store.send(.autoShiftButtonTapped(dayID: dayID)) {
+            $0.$itinerary.withLock {
                 $0.itineraryDays[0].spots[1].startTime = SpotTime(hour: 11, minute: 30)
             }
         }
         
-        await store.receive(\.itinerary.delegate.itineraryUpdated)
-        await store.receive(\.delegate.tripUpdated)
-        
+        await store.receive(\.delegate.itineraryUpdated)
     }
 }

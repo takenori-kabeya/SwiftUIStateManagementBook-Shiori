@@ -28,16 +28,14 @@ struct TripWeatherPlaceTests {
         )
     }
 
-    @Test
-    func 場所を符号化して復号しても内容が保たれること() throws {
+    @Test func 場所を符号化して復号しても内容が保たれること() throws {
         let place = makePlace()
         let data = try JSONEncoder().encode(place)
         let decoded = try JSONDecoder().decode(Place.self, from: data)
         #expect(decoded == place)
     }
 
-    @Test
-    func 天気予報用場所なしの旅行を符号化して復号しても天気予報用場所が空であること() throws {
+    @Test func 天気予報用場所なしの旅行を符号化して復号しても天気予報用場所が空であること() throws {
         let trip = makeTrip(weatherPlace: nil)
         let data = try JSONEncoder().encode(trip)
         let decoded = try JSONDecoder().decode(Trip.self, from: data)
@@ -45,8 +43,7 @@ struct TripWeatherPlaceTests {
         #expect(decoded.info.title == "テスト旅行")
     }
 
-    @Test
-    func 天気予報用場所ありの旅行を符号化して復号しても天気予報用場所が保たれること() throws {
+    @Test func 天気予報用場所ありの旅行を符号化して復号しても天気予報用場所が保たれること() throws {
         let place = makePlace()
         let trip = makeTrip(weatherPlace: place)
         let data = try JSONEncoder().encode(trip)
@@ -54,13 +51,12 @@ struct TripWeatherPlaceTests {
         #expect(decoded.info.weatherPlace == place)
     }
 
-    @Test
-    func FeatureのStateからTripを組み立てても天気予報用場所が保たれること() {
+    @Test func FeatureのStateからTripを組み立てても天気予報用場所が保たれること() {
         Task {
             let place = makePlace()
             let trip = makeTrip(weatherPlace: place)
-            let state = await TripFeature.State(trip: Shared(value: trip))
-            let restored = await state.makeTrip()
+            let state = TripFeature.State(trip: Shared(value: trip))
+            let restored = await state.trip
             #expect(restored.info.weatherPlace == place)
             #expect(restored.info == trip.info)
             #expect(restored.itinerary == trip.itinerary)

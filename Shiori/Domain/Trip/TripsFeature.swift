@@ -7,6 +7,8 @@ struct TripsFeature {
     @MainActorReducer
     enum Path {
         case tripDetail(TripFeature)
+        case itineraryViewer(ItineraryViewerFeature)
+        case itineraryEditor(ItineraryFeature)
     }
     
     @ObservableState
@@ -92,15 +94,17 @@ struct TripsFeature {
                 return .none
                 
             case let .editTrip(.presented(.delegate(.saveRequested(draft)))):
-                if let elementID = findElementID(in: state.path, tripID: draft.id) {
-                    // Tripの書き換えはtripDetail側で行われる
-                    return .send(.path(.element(id: elementID, action: .tripDetail(.tripUpdateRequested(draft)))))
-                }
                 state.$trips.withLock {
                     $0[id: draft.id]?.info = draft.info
                     $0[id: draft.id]?.itinerary.setDayCount(draft.newNumDays)
                 }
-                
+                if let elementID = findItineraryViewerElementID(in: state.path, tripID: draft.id),
+                   let trip = state.trips[id: draft.id] {
+                    return .run { send in
+                        await send(.path(.element(id: elementID, action: .itineraryViewer(.tripUpdated(trip)))))
+                        await send(.tripUpdated)
+                    }
+                }
                 return .send(.tripUpdated)
             case .editTrip:
                 return .none
@@ -113,7 +117,28 @@ struct TripsFeature {
                 state.editTrip = TripEditFeature.State(draft: draft)
                 return .none
                 
+            case let .path(.element(_, action: .tripDetail(.delegate(.itineraryEditorButtonTapped(id))))):
+                guard let sharedTrip = Shared(state.$trips[id: id]) else {
+                    return .none
+                }
+                state.path.append(.itineraryEditor(ItineraryFeature.State(itinerary: sharedTrip.itinerary, tripStartDate: sharedTrip.info.startDate)))
+                return .none
+                
+            case let .path(.element(_, action: .tripDetail(.delegate(.itineraryViewerButtonTapped(id))))):
+                guard let sharedTrip = Shared(state.$trips[id: id]) else {
+                    return .none
+                }
+                let forecastCondition = ForecastCondition.makeCondition(from: sharedTrip.wrappedValue)
+                let weatherForecastState = WeatherForecastFeature.State(forecastCondition: forecastCondition)
+                state.path.append(.itineraryViewer(ItineraryViewerFeature.State(
+                    tripID: sharedTrip.id.wrappedValue,
+                    itinerary: sharedTrip.itinerary,
+                    tripStartDate: sharedTrip.info.startDate,
+                    weatherForecast: weatherForecastState)))
+                return .none
             case .path(.element(_, action: .tripDetail(.delegate(.tripUpdated)))):
+                return .send(.tripUpdated)
+            case .path(.element(_, action: .itineraryEditor(.delegate(.itineraryUpdated)))):
                 return .send(.tripUpdated)
             case .path:
                 return .none
@@ -132,7 +157,7 @@ struct TripsFeature {
         .forEach(\.path, action: \.path)
     }
     
-    private func findElementID(
+    private func findTripDetailElementID(
         in path: StackState<Path.State>,
         tripID: Trip.ID
     ) -> StackElementID? {
@@ -143,7 +168,18 @@ struct TripsFeature {
             return false
         }
     }
-
+    
+    private func findItineraryViewerElementID(
+        in path: StackState<Path.State>,
+        tripID: Trip.ID
+    ) -> StackElementID? {
+        path.ids.first { elementID in
+            if case let .itineraryViewer(viewerFeatureState) = path[id: elementID] {
+                return viewerFeatureState.tripID == tripID
+            }
+            return false
+        }
+    }
 }
 
 extension TripsFeature.Path.State : Equatable {}

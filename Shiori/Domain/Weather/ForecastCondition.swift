@@ -6,3 +6,14 @@ nonisolated struct ForecastCondition: Equatable, Sendable {
     var fromDate: Date
     var numDays: Int
 }
+
+extension ForecastCondition {
+    static func makeCondition(from trip: Trip) -> ForecastCondition {
+        ForecastCondition(
+            latitude: trip.info.weatherPlace?.latitude,
+            longitude: trip.info.weatherPlace?.longitude,
+            fromDate: trip.info.startDate,
+            numDays: trip.itinerary.itineraryDays.count
+        )
+    }
+}

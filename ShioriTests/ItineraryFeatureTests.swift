@@ -52,7 +52,7 @@ struct ItineraryFeatureTests {
                 ),
             ]
         )
-        let store = TestStore(initialState: ItineraryFeature.State(itinerary: Shared(value: initial))) {
+        let store = TestStore(initialState: ItineraryFeature.State(itinerary: Shared(value: initial), tripStartDate: Shared(value: .now))) {
             ItineraryFeature()
         }
         await store.send(.autoShiftButtonTapped(dayID: day1ID)) {
@@ -76,7 +76,7 @@ struct ItineraryFeatureTests {
                 ),
             ]
         )
-        let store = TestStore(initialState: ItineraryFeature.State(itinerary: Shared(value: initial))) {
+        let store = TestStore(initialState: ItineraryFeature.State(itinerary: Shared(value: initial), tripStartDate: Shared(value: .now))) {
             ItineraryFeature()
         }
 
@@ -87,7 +87,7 @@ struct ItineraryFeatureTests {
     @Test func 候補追加でタイトルを候補へ追加すること() async {
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Shared(value: Itinerary(candidateSpots: [], itineraryDays: [ItineraryDay(id: uuid())])) // ここのuuid()で0番が採られる
+                itinerary: Shared(value: Itinerary(candidateSpots: [], itineraryDays: [ItineraryDay(id: uuid())])), tripStartDate: Shared(value: .now)
             )
         ) {
             ItineraryFeature()
@@ -124,7 +124,7 @@ struct ItineraryFeatureTests {
                         ItineraryDay(id: day1ID, spots: []),
                     ]
                 ))
-            )
+            , tripStartDate: Shared(value: .now))
         ) {
             ItineraryFeature()
         }
@@ -157,7 +157,7 @@ struct ItineraryFeatureTests {
                     itineraryDays: [
                         ItineraryDay(id: dayID)
                     ]
-                ))
+                )), tripStartDate: Shared(value: .now)
             )
         ) {
             ItineraryFeature()
@@ -192,7 +192,7 @@ struct ItineraryFeatureTests {
                 itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: uuid(), spots: [spot])]
-                ))
+                )), tripStartDate: Shared(value: .now)
             )
         ) {
             ItineraryFeature()
@@ -217,7 +217,7 @@ struct ItineraryFeatureTests {
                     itineraryDays: [
                         ItineraryDay(id: uuid(), spots: [spotA, spotB]),
                     ]
-                ))
+                )), tripStartDate: Shared(value: .now)
             )
         ) {
             ItineraryFeature()
@@ -243,7 +243,7 @@ struct ItineraryFeatureTests {
                     itineraryDays: [
                         ItineraryDay(id: uuid(), spots: [spotA, spotB]),
                     ]
-                ))
+                )), tripStartDate: Shared(value: .now)
             )
         ) {
             ItineraryFeature()
@@ -269,7 +269,7 @@ struct ItineraryFeatureTests {
                         ItineraryDay(id: uuid(), spots: [spotA]),
                         ItineraryDay(id: uuid(), spots: [spotB]),
                     ]
-                ))
+                )), tripStartDate: Shared(value: .now)
             )
         ) {
             ItineraryFeature()
@@ -296,7 +296,7 @@ struct ItineraryFeatureTests {
                         ItineraryDay(id: uuid(), spots: [spotA]),
                         ItineraryDay(id: uuid(), spots: [spotB]),
                     ]
-                ))
+                )), tripStartDate: Shared(value: .now)
             )
         ) {
             ItineraryFeature()
@@ -319,7 +319,7 @@ struct ItineraryFeatureTests {
                 itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: uuid(), spots: [spot])]
-                ))
+                )), tripStartDate: Shared(value: .now)
             )
         ) {
             ItineraryFeature()
@@ -338,7 +338,7 @@ struct ItineraryFeatureTests {
                 itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: uuid(), spots: [spot])]
-                )),
+                )), tripStartDate: Shared(value: .now),
                 spotPendingDeletion: spotID
             )
         ) {
@@ -362,7 +362,7 @@ struct ItineraryFeatureTests {
                 itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: uuid(), spots: [spot])]
-                )),
+                )), tripStartDate: Shared(value: .now),
                 spotPendingDeletion: spotID
             )
         ) {
@@ -382,7 +382,7 @@ struct ItineraryFeatureTests {
                 itinerary: Shared(value: Itinerary(
                     candidateSpots: [original],
                     itineraryDays: [ItineraryDay(id: uuid())]
-                ))
+                )), tripStartDate: Shared(value: .now)
             )
         ) {
             ItineraryFeature()
@@ -419,7 +419,7 @@ struct ItineraryFeatureTests {
                 itinerary: Shared(value: Itinerary(
                     candidateSpots: [original],
                     itineraryDays: [ItineraryDay(id: uuid())]
-                ))
+                )), tripStartDate: Shared(value: .now)
             )
         ) {
             ItineraryFeature()
@@ -452,7 +452,7 @@ struct ItineraryFeatureTests {
                 itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB])]
-                ))
+                )), tripStartDate: Shared(value: .now)
             )
         ) {
             ItineraryFeature()
@@ -498,7 +498,7 @@ struct ItineraryFeatureTests {
                 itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB])]
-                )),
+                )), tripStartDate: Shared(value: .now),
                 scheduleShiftPending: ItineraryFeature.ScheduleShiftPending(
                     dayID: dayID,
                     fromSpotID: spotBID
@@ -528,7 +528,7 @@ struct ItineraryFeatureTests {
                 itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB])]
-                )),
+                )), tripStartDate: Shared(value: .now),
                 scheduleShiftPending: ItineraryFeature.ScheduleShiftPending(
                     dayID: dayID,
                     fromSpotID: spotBID
@@ -555,7 +555,7 @@ struct ItineraryFeatureTests {
                 itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB])]
-                ))
+                )), tripStartDate: Shared(value: .now)
             )
         ) {
             ItineraryFeature()
@@ -594,7 +594,7 @@ struct ItineraryFeatureTests {
                 itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB])]
-                ))
+                )), tripStartDate: Shared(value: .now)
             )
         ) {
             ItineraryFeature()
@@ -632,7 +632,7 @@ struct ItineraryFeatureTests {
                 itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: dayID, spots: [spotA])]
-                ))
+                )), tripStartDate: Shared(value: .now)
             )
         ) {
             ItineraryFeature()
@@ -671,7 +671,7 @@ struct ItineraryFeatureTests {
                 itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB])]
-                ))
+                )), tripStartDate: Shared(value: .now)
             )
         ) {
             ItineraryFeature()
@@ -713,7 +713,7 @@ struct ItineraryFeatureTests {
                 itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB, spotC])]
-                ))
+                )), tripStartDate: Shared(value: .now)
             )
         ) {
             ItineraryFeature()
@@ -757,7 +757,7 @@ struct ItineraryFeatureTests {
                 itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB])]
-                ))
+                )), tripStartDate: Shared(value: .now)
             )
         ) {
             ItineraryFeature()
@@ -815,7 +815,7 @@ struct ItineraryFeatureTests {
                 itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB, spotC])]
-                )),
+                )), tripStartDate: Shared(value: .now),
                 scheduleShiftPending: ItineraryFeature.ScheduleShiftPending(
                     dayID: dayID,
                     fromSpotID: spotBID

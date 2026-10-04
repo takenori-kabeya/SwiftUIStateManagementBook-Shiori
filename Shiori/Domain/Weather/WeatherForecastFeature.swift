@@ -15,7 +15,6 @@ struct WeatherForecastFeature {
         case forecastConditionUpdated(ForecastCondition)
         case refreshRequested
         case fetchResponse(Result<[DailyWeatherForecast], WeatherForecastError>)
-        case viewDisappeared
     }
     
     nonisolated enum CancellableTask: Hashable, Sendable {
@@ -33,7 +32,7 @@ struct WeatherForecastFeature {
                 state.errorMessage = nil
                 state.isFetching = false
                 return .cancel(id: CancellableTask.fetchForecast)
-
+                
             case .refreshRequested:
                 let condition = state.forecastCondition
                 guard let latitude = condition.latitude,
@@ -43,7 +42,7 @@ struct WeatherForecastFeature {
                     state.isFetching = false
                     return .none
                 }
-
+                
                 state.isFetching = true
                 state.errorMessage = nil
                 return .run { [weatherForecast] send in
@@ -56,7 +55,7 @@ struct WeatherForecastFeature {
                         )
                         await send(.fetchResponse(.success(forecasts)))
                     } catch is CancellationError {
-                       return
+                        return
                     } catch let error as WeatherForecastError {
                         await send(.fetchResponse(.failure(error)))
                     } catch {
@@ -64,21 +63,17 @@ struct WeatherForecastFeature {
                     }
                 }
                 .cancellable(id: CancellableTask.fetchForecast, cancelInFlight: true)
-
+                
             case let .fetchResponse(.success(forecasts)):
                 state.isFetching = false
                 state.dailyForecasts = forecasts
                 state.errorMessage = nil
                 return .none
-
+                
             case let .fetchResponse(.failure(error)):
                 state.isFetching = false
                 state.errorMessage = error.localizedDescription
                 return .none
-
-            case .viewDisappeared:
-                state.isFetching = false
-                return .cancel(id: CancellableTask.fetchForecast)
             }
         }
     }

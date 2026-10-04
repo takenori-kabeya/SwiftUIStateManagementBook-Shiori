@@ -40,6 +40,13 @@ struct TripsFeatureTests {
         }
         return state
     }
+    private func stateWithItineraryEditorOnPath(_ trip: Trip) -> TripsFeature.State {
+        var state = TripsFeature.State(trips: Shared(value: [trip]))
+        if let sharedTrip = Shared(state.$trips[id: trip.id]) {
+            state.path.append(.itineraryEditor(ItineraryFeature.State(itinerary: sharedTrip.itinerary, tripStartDate: sharedTrip.info.startDate)))
+        }
+        return state
+    }
     
     @Test func 旅行追加で旅行状態を末尾へ追加すること() async {
         let trip = makeTrip(id: uuid(), title: "大阪", itinerary: Itinerary(candidateSpots: [], itineraryDays: [ItineraryDay(id: uuid())]))
@@ -132,7 +139,7 @@ struct TripsFeatureTests {
             )
         )
         let store = TestStore(
-            initialState: stateWithTripDetailOnPath(trip)
+            initialState: stateWithItineraryEditorOnPath(trip)
         ) {
             TripsFeature()
         } withDependencies: {
@@ -144,22 +151,22 @@ struct TripsFeatureTests {
             .path(
                 .element(
                     id: 0,
-                    action: .tripDetail(.itinerary(.addCandidateButtonTapped(title: spotTitle)))
+                    action: .itineraryEditor(.addCandidateButtonTapped(title: spotTitle))
                 )
             )
         ) {
-            $0.$trips.withLock {
-                $0[id: tripID]?.itinerary.candidateSpots.append(Spot(id: spotID, title: spotTitle))
+            $0.path[id: 0]?.itineraryEditor?.$itinerary.withLock {
+                $0.candidateSpots.append(Spot(id: spotID, title: spotTitle))
             }
         }
-        await store.receive(\.path[id: 0].tripDetail.itinerary.delegate.itineraryUpdated)
-        await store.receive(\.path[id: 0].tripDetail.delegate.tripUpdated)
+        await store.receive(\.path[id: 0].itineraryEditor.delegate.itineraryUpdated)
         await store.receive(\.tripUpdated)
         await store.receive(\.save)
         await store.receive(\.saveCompleted)
         
-        #expect(store.state.trips[id: tripID]?.itinerary.candidateSpots.map(\.title) == ["候補"])
+        #expect(store.state.trips[id: tripID]?.itinerary.candidateSpots.map(\.title) == [spotTitle])
         #expect(store.state.trips[id: tripID]?.info.title == "東京")
+        #expect(store.state.trips[id: tripID]?.id == tripID)
     }
     
     @Test func Dependencyで差し替えて読み込むと旅行一覧を置き換えること() async {
@@ -209,13 +216,12 @@ struct TripsFeatureTests {
             $0.editTrip?.draft.info.title = "新"
         }
 
-        var saved = trip
-        saved.info.title = "新"
-
         await store.send(.editTrip(.presented(.saveButtonTapped)))
-        await store.receive(\.editTrip.presented.delegate.saveRequested)
-        await store.receive(\.path[id: 0].tripDetail.tripUpdateRequested)
-        await store.receive(\.path[id: 0].tripDetail.delegate.tripUpdated)
+        await store.receive(\.editTrip.presented.delegate.saveRequested) {
+            $0.$trips[id: tripID].withLock {
+                $0?.info.title = "新"
+            }
+        }
         await store.receive(\.tripUpdated)
         await store.receive(\.save)
         await store.receive(\.editTrip.dismiss) {

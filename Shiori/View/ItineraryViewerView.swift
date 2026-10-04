@@ -8,9 +8,7 @@ enum ItinerarySpotStatus {
 }
 
 struct ItineraryViewerView: View {
-    @Bindable var store: StoreOf<ItineraryFeature>
-    var weatherForecastStore: StoreOf<WeatherForecastFeature>
-    let tripStartDate: Date
+    @Bindable var store: StoreOf<ItineraryViewerFeature>
 
     private var misalignedSpotIDs: Set<UUID> {
         store.itinerary.itineraryDays.reduce(into: Set<UUID>()) { result, day in
@@ -29,10 +27,7 @@ struct ItineraryViewerView: View {
             content(now: context.date)
         }
         .refreshable {
-            await weatherForecastStore.send(.refreshRequested).finish()
-        }
-        .onDisappear {
-            weatherForecastStore.send(.viewDisappeared)
+            await store.send(.weatherForecast(.refreshRequested)).finish()
         }
         .navigationTitle("旅程を見る")
     }
@@ -41,7 +36,7 @@ struct ItineraryViewerView: View {
     private func content(now: Date) -> some View {
         let highlight = ItineraryCurrentNextResolver.highlight(
             in: store.itinerary,
-            tripStartDate: tripStartDate,
+            tripStartDate: store.tripStartDate,
             now: now
         )
 
@@ -52,7 +47,7 @@ struct ItineraryViewerView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     Text("天気予報")
                         .font(.headline)
-                    WeatherForecastView(store: weatherForecastStore)
+                    WeatherForecastView(store: store.scope(state: \.weatherForecast, action: \.weatherForecast))
                 }
                 .padding(.leading, 16)
 
@@ -194,31 +189,30 @@ struct ItineraryViewerView: View {
     }
 
     private func dayTitle(_ dayIndex: Int) -> String {
-        return DayTitleFormatter.dayTitleText(tripStartDate: tripStartDate, dayIndex: dayIndex)
+        return DayTitleFormatter.dayTitleText(tripStartDate: store.tripStartDate, dayIndex: dayIndex)
     }
 
 }
 
 #Preview {
-    @Previewable @State var trip = Trip.previewTrip
+    @Previewable @State var trip = Shared(value: Trip.previewTrip)
     @Previewable @State var place = Trip.previewTrip.info.weatherPlace!
     
     NavigationStack {
+        let forecastCondition = ForecastCondition(
+            latitude: place.latitude,
+            longitude: place.longitude,
+            fromDate: trip.info.startDate.wrappedValue,
+            numDays: trip.itinerary.itineraryDays.count.wrappedValue)
+        let weatherForecastState = WeatherForecastFeature.State(forecastCondition: forecastCondition)
         ItineraryViewerView(
-            store: Store(initialState: ItineraryFeature.State(itinerary: Shared(value: trip.itinerary))) {
-                ItineraryFeature()
-            },
-            weatherForecastStore: Store(initialState: WeatherForecastFeature.State(
-                forecastCondition: ForecastCondition(
-                    latitude: place.latitude,
-                    longitude: place.longitude,
-                    fromDate: trip.info.startDate,
-                    numDays: trip.itinerary.itineraryDays.count
-                )
-            )) {
-                WeatherForecastFeature()
-            },
-            tripStartDate: trip.info.startDate
+            store: Store(initialState: ItineraryViewerFeature.State(
+                tripID: trip.id.wrappedValue,
+                itinerary: trip.itinerary,
+                tripStartDate: trip.info.startDate,
+                weatherForecast: weatherForecastState)) {
+                    ItineraryViewerFeature()
+                }
         )
     }
 }

@@ -1,3 +1,4 @@
+import Foundation
 import ComposableArchitecture
 
 @Reducer
@@ -14,6 +15,7 @@ struct ItineraryFeature {
     @ObservableState
     struct State: Equatable {
         @Shared var itinerary: Itinerary
+        @Shared var tripStartDate: Date
         @Presents var editSpot: SpotFeature.State?
         var daySelection: DaySelectionState?
         var scheduleShiftPending: ScheduleShiftPending?
@@ -188,6 +190,7 @@ struct ItineraryFeature {
 
 extension ItineraryFeature.State {
     init(
+        tripStartDate: Shared<Date>,
         itinerary: Shared<Itinerary>,
         editSpot: SpotFeature.State? = nil,
         daySelection: ItineraryFeature.DaySelectionState? = nil,
@@ -195,6 +198,7 @@ extension ItineraryFeature.State {
         scheduleShiftPending: ItineraryFeature.ScheduleShiftPending? = nil
     ) {
         self._itinerary = itinerary
+        self._tripStartDate = tripStartDate
         self.editSpot = editSpot
         self.daySelection = daySelection
         self.spotPendingDeletion = spotPendingDeletion

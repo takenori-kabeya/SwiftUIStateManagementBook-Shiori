@@ -6,17 +6,14 @@ struct TripDetailView: View {
 
     var body: some View {
         List {
-            NavigationLink("旅程を編集") {
-                ItineraryEditorView(store: store.scope(state: \.itinerary, action: \.itinerary), tripStartDate: store.trip.info.startDate)
+            Button("旅程を編集") {
+                store.send(.itineraryEditorButtonTapped)
             }
-            
-            NavigationLink("旅程を見る") {
-                ItineraryViewerView(
-                    store: store.scope(state: \.itinerary, action: \.itinerary),
-                    weatherForecastStore: store.scope(state: \.weatherForecast, action: \.weatherForecast),
-                    tripStartDate: store.trip.info.startDate
-                )
+            .buttonStyle(.navigationRow)
+            Button("旅程を見る") {
+                store.send(.itineraryViewerButtonTapped)
             }
+            .buttonStyle(.navigationRow)
         }
         .navigationTitle(store.trip.info.title)
     }

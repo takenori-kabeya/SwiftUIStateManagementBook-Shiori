@@ -273,7 +273,6 @@ struct ConfirmedItineraryView: View {
 
 struct ItineraryEditorView: View {
     @Bindable var store: StoreOf<ItineraryFeature>
-    let tripStartDate: Date
     @State private var newTitle = ""
 
     private var timeMisalignedSpotIDs: Set<UUID> {
@@ -389,7 +388,7 @@ struct ItineraryEditorView: View {
     }
 
     private func dayTitle(_ dayIndex: Int) -> String {
-        return DayTitleFormatter.dayTitleText(tripStartDate: tripStartDate, dayIndex: dayIndex)
+        return DayTitleFormatter.dayTitleText(tripStartDate: store.tripStartDate, dayIndex: dayIndex)
     }
 
     private func addCandidate() {
@@ -435,7 +434,8 @@ struct ItineraryEditorView: View {
 #Preview {
     @Previewable @State var trip = Trip.previewTrip
     ItineraryEditorView(store: Store(initialState: ItineraryFeature.State(
+        tripStartDate: Shared(value: trip.info.startDate),
         itinerary: Shared(value: trip.itinerary))) {
             ItineraryFeature()
-        }, tripStartDate: trip.info.startDate)
+        })
 }
