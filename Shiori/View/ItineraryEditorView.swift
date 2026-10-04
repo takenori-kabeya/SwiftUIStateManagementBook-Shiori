@@ -336,9 +336,37 @@ struct ItineraryEditorView: View {
             }
             Button("キャンセル", role: .cancel) {}
         }
-        .sheet(item: $store.scope(\.editSpot, action: \.editSpot)) { spotStore in
+        .confirmationDialog(
+            spotPendingDeletionMessage(store.spotPendingDeletion),
+            isPresented: Binding(
+                get: { store.spotPendingDeletion != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        store.send(.deleteConfirmationDismissed)
+                    }
+                }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("削除", role: .destructive) {
+                store.send(.deleteConfirmed)
+            }
+            Button("キャンセル") {
+                store.send(.deleteConfirmationDismissed)
+            }
+        }
+        .sheet(item: $store.scope(state: \.editSpot, action: \.editSpot)) { spotStore in
             SpotEditorView(store: spotStore)
         }
+    }
+    
+    private func spotPendingDeletionMessage(_ spotID: Spot.ID?) -> String {
+        guard let spotID,
+              let spot = store.itinerary.spot(id: spotID) else {
+            return "この行き先を削除しますか？"
+        }
+        
+        return "「\(spot.title)」を削除しますか？"
     }
 
     private func dayTitle(_ dayIndex: Int) -> String {

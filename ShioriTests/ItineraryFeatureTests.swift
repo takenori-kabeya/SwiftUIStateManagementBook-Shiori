@@ -286,32 +286,14 @@ struct ItineraryFeatureTests {
         }
     }
 
-    @Test func 行き先更新で一致する行き先を置き換えること() async {
+    @Test func 削除ボタンで削除確認待ちになり行き先はまだ取り除かないこと() async {
         let spotID = uuid()
-        let updated = makeSpot(id: spotID, title: "新")
-        let store = TestStore(
-            initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
-                    candidateSpots: [makeSpot(id: spotID, title: "旧")],
-                    itineraryDays: [ItineraryDay(id: uuid())]
-                )
-            )
-        ) {
-            ItineraryFeature()
-        }
-
-        await store.send(.spotUpdated(updated)) {
-            $0.itinerary.candidateSpots = [updated]
-        }
-    }
-
-    @Test func 削除で確定済み行き先を取り除くこと() async {
-        let spotID = uuid()
+        let spot = makeSpot(id: spotID, title: "A")
         let store = TestStore(
             initialState: ItineraryFeature.State(
                 itinerary: Itinerary(
                     candidateSpots: [],
-                    itineraryDays: [ItineraryDay(id: uuid(), spots: [makeSpot(id: spotID, title: "A")])]
+                    itineraryDays: [ItineraryDay(id: uuid(), spots: [spot])]
                 )
             )
         ) {
@@ -319,7 +301,48 @@ struct ItineraryFeatureTests {
         }
 
         await store.send(.deleteButtonTapped(spotID: spotID)) {
+            $0.spotPendingDeletion = spotID
+        }
+    }
+
+    @Test func 削除確定で行き先を取り除き確認待ちをクリアすること() async {
+        let spotID = uuid()
+        let spot = makeSpot(id: spotID, title: "A")
+        let store = TestStore(
+            initialState: ItineraryFeature.State(
+                itinerary: Itinerary(
+                    candidateSpots: [],
+                    itineraryDays: [ItineraryDay(id: uuid(), spots: [spot])]
+                ),
+                spotPendingDeletion: spotID
+            )
+        ) {
+            ItineraryFeature()
+        }
+
+        await store.send(.deleteConfirmed) {
             $0.itinerary.itineraryDays[0].spots = []
+            $0.spotPendingDeletion = nil
+        }
+    }
+
+    @Test func 削除確認を閉じると旅程は変えず確認待ちだけクリアすること() async {
+        let spotID = uuid()
+        let spot = makeSpot(id: spotID, title: "A")
+        let store = TestStore(
+            initialState: ItineraryFeature.State(
+                itinerary: Itinerary(
+                    candidateSpots: [],
+                    itineraryDays: [ItineraryDay(id: uuid(), spots: [spot])]
+                ),
+                spotPendingDeletion: spotID
+            )
+        ) {
+            ItineraryFeature()
+        }
+
+        await store.send(.deleteConfirmationDismissed) {
+            $0.spotPendingDeletion = nil
         }
     }
 

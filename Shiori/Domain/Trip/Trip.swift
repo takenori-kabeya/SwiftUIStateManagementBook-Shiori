@@ -12,19 +12,6 @@ nonisolated struct Trip: Identifiable, Codable, Equatable {
     var itinerary: Itinerary
 }
 
-nonisolated struct TripDraft: Equatable {
-    var id: UUID {
-        info.id
-    }
-    var info: TripInfo
-    var numDays: Int
-    
-    init(from trip: Trip) {
-        self.info = trip.info
-        self.numDays = trip.itinerary.itineraryDays.count
-    }
-}
-
 extension Trip {
     nonisolated static var previewTrip: Trip {
         @Dependency(\.date) var date

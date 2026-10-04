@@ -42,7 +42,7 @@ nonisolated struct Itinerary: Codable, Equatable {
         try container.encode(candidateSpots, forKey: .candidateSpots)
         try container.encode(itineraryDays, forKey: .itineraryDays)
     }
-    
+
     /// 旅程の日数を増減する
     ///
     /// - 増やす: 末尾に空の `ItineraryDay` を追加する
@@ -233,6 +233,27 @@ nonisolated struct Itinerary: Codable, Equatable {
         } else {
             itineraryDays[toDay].spots.insert(movingSpot, at: insertIndex)
         }
+    }
+
+    /// 候補または確定内から ID 一致の Spot を返す
+    func spot(id: Spot.ID) -> Spot? {
+        if let candidate = candidateSpots.first(where: { $0.id == id }) {
+            return candidate
+        }
+        for day in itineraryDays {
+            if let spot = day.spots.first(where: { $0.id == id }) {
+                return spot
+            }
+        }
+        return nil
+    }
+
+    /// 確定旅程内の Spot 位置（日 ID と日内 index）
+    func confirmedSpotLocation(spotID: Spot.ID) -> (dayID: ItineraryDay.ID, spotIndex: Int)? {
+        guard let location = locationOfSpot(spotID: spotID) else {
+            return nil
+        }
+        return (dayID: itineraryDays[location.dayIndex].id, spotIndex: location.spotIndex)
     }
 
     private func locationOfSpot(spotID: UUID) -> (dayIndex: Int, spotIndex: Int)? {

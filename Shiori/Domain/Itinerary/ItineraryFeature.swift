@@ -11,6 +11,7 @@ struct ItineraryFeature {
         var itinerary: Itinerary
         @Presents var editSpot: SpotFeature.State?
         var daySelection: DaySelectionState?
+        var spotPendingDeletion: Spot.ID?
     }
 
     enum Action {
@@ -24,8 +25,9 @@ struct ItineraryFeature {
         case moveDownButtonTapped(spotID: Spot.ID)
         case moveToPreviousDayButtonTapped(spotID: Spot.ID)
         case moveToNextDayButtonTapped(spotID: Spot.ID)
-        case spotUpdated(Spot)
         case deleteButtonTapped(spotID: Spot.ID)
+        case deleteConfirmed
+        case deleteConfirmationDismissed
         case autoShiftButtonTapped(dayID: ItineraryDay.ID)
 
         case daySelected(dayID: ItineraryDay.ID)
@@ -56,11 +58,19 @@ struct ItineraryFeature {
             case let .moveToNextDayButtonTapped(spotID):
                 state.itinerary.moveSpotToNextDay(spotID: spotID)
                 return .none
-            case let .spotUpdated(spot):
-                state.itinerary.updateSpot(spot)
-                return .none
             case let .deleteButtonTapped(spotID):
+                //state.itinerary.deleteSpot(spotID: spotID)
+                state.spotPendingDeletion = spotID
+                return .none
+            case .deleteConfirmed:
+                guard let spotID = state.spotPendingDeletion else {
+                    return .none
+                }
                 state.itinerary.deleteSpot(spotID: spotID)
+                state.spotPendingDeletion = nil
+                return .none
+            case .deleteConfirmationDismissed:
+                state.spotPendingDeletion = nil
                 return .none
             case let .autoShiftButtonTapped(dayID):
                 // 指定日の後続予定をずらす
