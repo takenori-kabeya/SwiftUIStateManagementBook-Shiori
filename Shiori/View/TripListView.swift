@@ -63,12 +63,14 @@ struct TripListView: View {
             }
         } destination: { childStore in
             switch (childStore.case) {
-            case let .tripDetail(detailStore):
-                TripDetailView(store: detailStore)
+            case let .tripDetail(tripDetailStore):
+                TripDetailView(store: tripDetailStore)
             case let .itineraryViewer(viewerStore):
                 ItineraryViewerView(store: viewerStore)
             case let .itineraryEditor(editorStore):
                 ItineraryEditorView(store: editorStore)
+            case let .spotDetail(spotDetailStore):
+                SpotDetailView(store: spotDetailStore)
             }
         }
     }

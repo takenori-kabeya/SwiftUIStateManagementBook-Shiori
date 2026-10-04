@@ -85,7 +85,8 @@ struct ItineraryViewerView: View {
                                         index: globalIndex,
                                         isLast: spotIndex == day.spots.count - 1,
                                         isTimeOrderMisaligned: misalignedSpotIDs.contains(spot.id),
-                                        isTimeConflict: conflictingSpotIDs.contains(spot.id)
+                                        isTimeConflict: conflictingSpotIDs.contains(spot.id),
+                                        onTitleTap: { store.send(.spotTapped(spot.id)) }
                                     ) {
                                         statusBadge(for: spot, highlight: highlight)
                                     }

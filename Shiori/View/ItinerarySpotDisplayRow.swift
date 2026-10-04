@@ -24,11 +24,18 @@ struct ItinerarySpotInfoView: View {
     let spot: Spot
     let isTimeOrderMisaligned: Bool
     let isTimeConflict: Bool
+    var onTitleTap: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(spot.title)
-                .font(.headline)
+            Button(spot.title) {
+                if let onTitleTap {
+                    onTitleTap()
+                }
+            }
+            .font(.headline)
+            .foregroundStyle(onTitleTap == nil ? .primary : Color.accentColor)
+            .disabled(onTitleTap == nil)
 
             HStack(spacing: 4) {
                 Text(spot.stayTimeDisplayText)
@@ -59,6 +66,7 @@ struct ItinerarySpotDisplayRow<Trailing: View>: View {
     let isLast: Bool
     let isTimeOrderMisaligned: Bool
     let isTimeConflict: Bool
+    var onTitleTap: (() -> Void)?
     @ViewBuilder let trailing: () -> Trailing
 
     var body: some View {
@@ -69,7 +77,8 @@ struct ItinerarySpotDisplayRow<Trailing: View>: View {
             ItinerarySpotInfoView(
                 spot: spot,
                 isTimeOrderMisaligned: isTimeOrderMisaligned,
-                isTimeConflict: isTimeConflict
+                isTimeConflict: isTimeConflict,
+                onTitleTap: onTitleTap
             )
             .frame(maxWidth: .infinity, alignment: .leading)
 

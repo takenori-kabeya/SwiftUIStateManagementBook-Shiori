@@ -14,6 +14,13 @@ struct ItineraryViewerFeature {
     enum Action {
         case weatherForecast(WeatherForecastFeature.Action)
         case tripUpdated(Trip)
+        case spotTapped(Spot.ID)
+        case delegate(Delegate)
+        
+        @CasePathable
+        enum Delegate {
+            case showSpotDetailRequested(Trip.ID, Spot.ID)
+        }
     }
     
     var body: some Reducer<State, Action> {
@@ -30,7 +37,11 @@ struct ItineraryViewerFeature {
                     return .send(.weatherForecast(.forecastConditionUpdated(next)))
                 }
                 return .none
+            case let .spotTapped(spotID):
+                return .send(.delegate(.showSpotDetailRequested(state.tripID, spotID)))
             case .weatherForecast:
+                return .none
+            case .delegate:
                 return .none
             }
         }

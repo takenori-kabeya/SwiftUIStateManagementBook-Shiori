@@ -307,4 +307,13 @@ nonisolated struct Itinerary: Codable, Equatable {
             cursor += count
         }
     }
+
+    func findSpotIndexes(spotID: Spot.ID) -> (dayIndex: Int, spotIndex: Int)? {
+        for (dayIndex, day) in itineraryDays.enumerated() {
+            if let spotIndex = day.spots.firstIndex(where: { $0.id == spotID }) {
+                return (dayIndex: dayIndex, spotIndex: spotIndex)
+            }
+        }
+        return nil
+    }
 }

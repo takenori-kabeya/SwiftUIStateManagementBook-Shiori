@@ -48,6 +48,18 @@ struct TripsFeatureTests {
         return state
     }
     
+    private func stateWithItineraryViewerOnPath(_ trip: Trip) -> TripsFeature.State {
+        var state = TripsFeature.State(trips: Shared(value: [trip]))
+        if let sharedTrip = Shared(state.$trips[id: trip.id]) {
+            state.path.append(.itineraryViewer(ItineraryViewerFeature.State(
+                tripID: trip.id,
+                itinerary: sharedTrip.itinerary,
+                tripStartDate: sharedTrip.info.startDate,
+                weatherForecast: WeatherForecastFeature.State(forecastCondition: ForecastCondition.makeCondition(from: trip)))))
+        }
+        return state
+    }
+
     @Test func 旅行追加で旅行状態を末尾へ追加すること() async {
         let trip = makeTrip(id: uuid(), title: "大阪", itinerary: Itinerary(candidateSpots: [], itineraryDays: [ItineraryDay(id: uuid())]))
         let store = TestStore(initialState: TripsFeature.State(trips: Shared(value: []))) {
@@ -265,5 +277,51 @@ struct TripsFeatureTests {
         #expect(store.state.trips[id: tripID]?.info.title == "元のタイトル")
         #expect(store.state.trips[id: tripID]?.id == trip.id)
         #expect(store.state.editTrip == nil)
+    }
+
+    @Test func 行き先をタップするとPathにStateが追加されること() async {
+        let tripID = uuid()
+        let dayID = uuid()
+        let spotID = uuid()
+        let spot = makeSpot(id: spotID, title: "東京タワー")
+        let day = ItineraryDay(id: dayID, spots: [spot])
+        let trip = makeTrip(
+            id: tripID,
+            title: "東京",
+            itinerary: Itinerary(
+                candidateSpots: [],
+                itineraryDays: [day]
+            )
+        )
+        let store = TestStore(
+            initialState: stateWithItineraryViewerOnPath(trip)
+        ) {
+            TripsFeature()
+        } withDependencies: {
+            $0.tripPersistence = .testValue
+        }
+        
+        await store.send(
+            .path(
+                .element(
+                    id: 0,
+                    action: .itineraryViewer(.spotTapped(spotID))
+                )
+            )
+        )
+        #expect(store.state.path.count == 1)
+        await store.receive(\.path[id: 0].itineraryViewer.delegate.showSpotDetailRequested) {
+            $0.path[id: 1] = .spotDetail(SpotDetailFeature.State(spot: Shared(value: spot)))
+        }
+        #expect(store.state.path.count == 2)
+        
+        //遷移後に原本のSpotを変更しても、詳細側に反映される
+        let sharedTrip = store.state.$trips[id: tripID]
+        
+        let newTitle = "上野動物園"
+        sharedTrip.withLock {
+            $0?.itinerary.itineraryDays[0].spots[0].title = newTitle
+        }
+        #expect(store.state.path[id: 1]?.spotDetail?.spot.title == newTitle)
     }
 }

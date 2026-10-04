@@ -9,6 +9,7 @@ struct TripsFeature {
         case tripDetail(TripFeature)
         case itineraryViewer(ItineraryViewerFeature)
         case itineraryEditor(ItineraryFeature)
+        case spotDetail(SpotDetailFeature)
     }
     
     @ObservableState
@@ -140,9 +141,21 @@ struct TripsFeature {
                 return .send(.tripUpdated)
             case .path(.element(_, action: .itineraryEditor(.delegate(.itineraryUpdated)))):
                 return .send(.tripUpdated)
+            case let .path(.element(_, action: .itineraryViewer(.delegate(.showSpotDetailRequested(tripID, spotID))))):
+                guard let sharedTrip = Shared(state.$trips[id: tripID]) else {
+                    return .none
+                }
+                guard let (dayIndex, spotIndex) = sharedTrip.itinerary.wrappedValue.findSpotIndexes(spotID: spotID) else {
+                    return .none
+                }
+
+                let sharedSpot = sharedTrip.itinerary.itineraryDays[dayIndex].spots[spotIndex]
+                let spotDetailState = SpotDetailFeature.State(spot: sharedSpot)
+                state.path.append(.spotDetail(spotDetailState))
+                return .none
             case .path:
                 return .none
-                
+
             case let .tripTapped(tripID):
                 guard let sharedTrip = Shared(state.$trips[id: tripID]) else {
                     return .none
