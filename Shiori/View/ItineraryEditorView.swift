@@ -77,13 +77,18 @@ struct CandidateSpotsView: View {
 struct ItinerarySpotRow: View {
     let spot: Spot
     let index: Int
-    let isLast: Bool
+    let isTimelineLast: Bool
+    let isReorderLast: Bool
     let isReordering: Bool
+    let canMoveToPreviousDay: Bool
+    let canMoveToNextDay: Bool
     let isTimeOrderMisaligned: Bool
     let isTimeConflict: Bool
     
     let onMoveUp: () -> Void
     let onMoveDown: () -> Void
+    let onMoveToPreviousDay: () -> Void
+    let onMoveToNextDay: () -> Void
     let onReturnToCandidates: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
@@ -92,50 +97,74 @@ struct ItinerarySpotRow: View {
         ItinerarySpotDisplayRow(
             spot: spot,
             index: index,
-            isLast: isLast,
+            isLast: isTimelineLast,
             isTimeOrderMisaligned: isTimeOrderMisaligned,
             isTimeConflict: isTimeConflict
         ) {
-            VStack {
-                Spacer()
-                HStack(alignment: .center) {
-                    Button("候補に\n戻す") {
-                        onReturnToCandidates()
-                    }
-                    
-                    Menu {
-                        Button("行き先編集") {
-                            onEdit()
+            if !isReordering {
+                VStack {
+                    Spacer()
+                    HStack(alignment: .center) {
+                        Button("候補に\n戻す") {
+                            onReturnToCandidates()
                         }
-                        Button("削除", role: .destructive) {
-                            onDelete()
+                        
+                        Menu {
+                            Button("行き先編集") {
+                                onEdit()
+                            }
+                            Button("削除", role: .destructive) {
+                                onDelete()
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis")
                         }
-                    } label: {
-                        Image(systemName: "ellipsis")
                     }
+                    Spacer()
                 }
-                Spacer()
             }
             
             if isReordering {
-                VStack {
-                    Spacer()
-                    Button {
-                        onMoveUp()
-                    } label: {
-                        Image(systemName: "arrowtriangle.up.fill")
+                HStack(spacing: 12) {
+                    VStack {
+                        Spacer()
+                        Button {
+                            onMoveUp()
+                        } label: {
+                            Image(systemName: "arrowtriangle.up.fill")
+                        }
+                        .scaleEffect(x: 2.0, y: 1.0, anchor: .center)
+                        .disabled(index == 0)
+                        
+                        Button {
+                            onMoveDown()
+                        } label: {
+                            Image(systemName: "arrowtriangle.down.fill")
+                        }
+                        .scaleEffect(x: 2.0, y: 1.0, anchor: .center)
+                        .disabled(isReorderLast)
+                        Spacer()
                     }
-                    .scaleEffect(x: 2.0, y: 1.0, anchor: .center)
-                    .disabled(index == 0)
-                    
-                    Button {
-                        onMoveDown()
-                    } label: {
-                        Image(systemName: "arrowtriangle.down.fill")
+
+                    VStack {
+                        Spacer()
+                        Button {
+                            onMoveToPreviousDay()
+                        } label: {
+                            Image(systemName: "arrowtriangle.up.2.fill")
+                        }
+                        .scaleEffect(x: 2.0, y: 1.0, anchor: .center)
+                        .disabled(!canMoveToPreviousDay)
+
+                        Button {
+                            onMoveToNextDay()
+                        } label: {
+                            Image(systemName: "arrowtriangle.down.2.fill")
+                        }
+                        .scaleEffect(x: 2.0, y: 1.0, anchor: .center)
+                        .disabled(!canMoveToNextDay)
+                        Spacer()
                     }
-                    .scaleEffect(x: 2.0, y: 1.0, anchor: .center)
-                    .disabled(isLast)
-                    Spacer()
                 }
             }
         }
@@ -143,12 +172,15 @@ struct ItinerarySpotRow: View {
 }
 
 struct ConfirmedItineraryView: View {
-    let spots: [Spot]
+	let itineraryDays: [ItineraryDay]
+    let dayLabel: (Int) -> String
     let misalignedSpotIDs: Set<UUID>
     let conflictingSpotIDs: Set<UUID>
 
     let onMoveUp: (Spot) -> Void
     let onMoveDown: (Spot) -> Void
+    let onMoveToPreviousDay: (Spot) -> Void
+    let onMoveToNextDay: (Spot) -> Void
     let onReturnToCandidate: (Spot) -> Void
     let onEdit: (Spot) -> Void
     let onDelete: (Spot) -> Void
@@ -156,6 +188,11 @@ struct ConfirmedItineraryView: View {
     @State private var isReordering: Bool = false
     
     var body: some View {
+        let flatSpotsCount = itineraryDays.reduce(0) { $0 + $1.spots.count }
+        let dayOffsets: [Int] = itineraryDays.indices.map { dayIndex in
+            itineraryDays[..<dayIndex].reduce(0) { $0 + $1.spots.count }
+        }
+
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
@@ -183,19 +220,40 @@ struct ConfirmedItineraryView: View {
                     .foregroundStyle(.orange)
             }
             VStack(spacing: 12) {
-                ForEach(Array(spots.enumerated()), id: \.element.id) { index, spot in
-                    ItinerarySpotRow(
-                        spot: spot,
-                        index: index,
-                        isLast: index == spots.count - 1,
-                        isReordering: isReordering,
-                        isTimeOrderMisaligned: misalignedSpotIDs.contains(spot.id),
-                        isTimeConflict: conflictingSpotIDs.contains(spot.id),
-                        onMoveUp: { withAnimation { onMoveUp(spot) } },
-                        onMoveDown: { withAnimation { onMoveDown(spot) } },
-                        onReturnToCandidates: { onReturnToCandidate(spot) },
-                        onEdit: { onEdit(spot) },
-                        onDelete: { onDelete(spot) })
+                ForEach(Array(itineraryDays.enumerated()), id: \.offset) { dayIndex, day in
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text(dayLabel(dayIndex))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .padding(.leading, 4)
+                            Spacer()
+                        }
+
+                        VStack(spacing: 12) {
+                            ForEach(Array(day.spots.enumerated()), id: \.element.id) { spotIndex, spot in
+                                let globalIndex = dayOffsets[dayIndex] + spotIndex
+                                ItinerarySpotRow(
+                                    spot: spot,
+                                    index: globalIndex,
+                                    isTimelineLast: spotIndex == day.spots.count - 1,
+                                    isReorderLast: globalIndex == flatSpotsCount - 1,
+                                    isReordering: isReordering,
+                                    canMoveToPreviousDay: dayIndex > 0,
+                                    canMoveToNextDay: dayIndex < itineraryDays.count - 1,
+                                    isTimeOrderMisaligned: misalignedSpotIDs.contains(spot.id),
+                                    isTimeConflict: conflictingSpotIDs.contains(spot.id),
+                                    onMoveUp: { withAnimation { onMoveUp(spot) } },
+                                    onMoveDown: { withAnimation { onMoveDown(spot) } },
+                                    onMoveToPreviousDay: { withAnimation { onMoveToPreviousDay(spot) } },
+                                    onMoveToNextDay: { withAnimation { onMoveToNextDay(spot) } },
+                                    onReturnToCandidates: { onReturnToCandidate(spot) },
+                                    onEdit: { onEdit(spot) },
+                                    onDelete: { onDelete(spot) }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -204,19 +262,23 @@ struct ConfirmedItineraryView: View {
 
 struct ItineraryEditorView: View {
     @Binding var itinerary: Itinerary
+    let tripStartDate: Date
     @State private var newTitle = ""
-
-    @State var isEditing: Bool = false
 
     @State private var editingSpot: Spot?
     @State private var editingDraft: SpotDraft = .empty
+    @State private var spotPendingConfirmation: Spot?
 
     private var timeMisalignedSpotIDs: Set<UUID> {
-        ItineraryScheduleChecker.misalignedSpotIDs(in: itinerary.confirmedSpots)
+        itinerary.itineraryDays.reduce(into: Set<UUID>()) { result, day in
+            result.formUnion(ItineraryScheduleChecker.misalignedSpotIDs(in: day.spots))
+        }
     }
 
     private var timeConflictingSpotIDs: Set<UUID> {
-        ItineraryScheduleChecker.conflictingSpotIDs(in: itinerary.confirmedSpots)
+        itinerary.itineraryDays.reduce(into: Set<UUID>()) { result, day in
+            result.formUnion(ItineraryScheduleChecker.conflictingSpotIDs(in: day.spots))
+        }
     }
     var body: some View {
         ScrollView {
@@ -225,15 +287,21 @@ struct ItineraryEditorView: View {
                     newTitle: $newTitle,
                     spots: itinerary.candidateSpots,
                     onAdd: addCandidate,
-                    onAddToItinerary: confirm,
+                    onAddToItinerary: { spot in
+                        spotPendingConfirmation = spot
+                    },
                     onEdit: startEditing,
                     onDelete: delete)
-               ConfirmedItineraryView(
-                    spots: itinerary.confirmedSpots,
+                
+                ConfirmedItineraryView(
+                    itineraryDays: itinerary.itineraryDays,
+                    dayLabel: dayTitle,
                     misalignedSpotIDs: timeMisalignedSpotIDs,
                     conflictingSpotIDs: timeConflictingSpotIDs,
                     onMoveUp: moveConfirmedSpotUp,
                     onMoveDown: moveConfirmedSpotDown,
+                    onMoveToPreviousDay: moveConfirmedSpotToPreviousDay,
+                    onMoveToNextDay: moveConfirmedSpotToNextDay,
                     onReturnToCandidate: unconfirm,
                     onEdit: startEditing,
                     onDelete: delete)
@@ -241,7 +309,29 @@ struct ItineraryEditorView: View {
             .padding()
         }
         .navigationTitle("旅程作成")
-        .isEditing(isEditing)
+        .confirmationDialog(
+            "追加する日を選択",
+            isPresented: Binding(
+                get: { spotPendingConfirmation != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        spotPendingConfirmation = nil
+                    }
+                }
+            ),
+            titleVisibility: .visible
+        ) {
+            if let spot = spotPendingConfirmation {
+                ForEach(itinerary.itineraryDays.indices, id: \.self) { dayIndex in
+                    Button("\(dayIndex + 1)日目") {
+                        confirm(spot, toDayIndex: dayIndex)
+                    }
+                }
+                Button("キャンセル", role: .cancel) {
+                    spotPendingConfirmation = nil
+                }
+            }
+        }
         .sheet(item: $editingSpot) { spot in
             NavigationStack {
                 Form {
@@ -252,7 +342,18 @@ struct ItineraryEditorView: View {
                     Toggle("予定滞在時間を指定する", isOn: $editingDraft.hasDurationMinutes)
                     Stepper("予定滞在時間: \(editingDraft.durationMinutes) (分)", value: $editingDraft.durationMinutes, in: 5...480, step: 5)
                         .disabled(!editingDraft.hasDurationMinutes)
-                    TextField("メモ", text: $editingDraft.memo)
+                    ZStack(alignment: .topLeading) {
+                        if editingDraft.memo.isEmpty {
+                            Text("メモ")
+                                .foregroundStyle(.tertiary)
+                                .padding(.top, 8)
+                                .padding(.leading, 5)
+                        }
+                        TextEditor(text: $editingDraft.memo)
+                            .frame(minHeight: 100)
+                            .scrollContentBackground(.hidden)
+                    }
+
                 }
                 .navigationTitle("行き先を編集")
                 .toolbar {
@@ -269,6 +370,10 @@ struct ItineraryEditorView: View {
                 }
             }
         }
+    }
+
+    private func dayTitle(_ dayIndex: Int) -> String {
+        return DayTitleFormatter.dayTitleText(tripStartDate: tripStartDate, dayIndex: dayIndex)
     }
 
     private func addCandidate() {
@@ -288,27 +393,25 @@ struct ItineraryEditorView: View {
         newTitle = ""
     }
 
-    private func confirm(_ spot: Spot) {
-        guard let index = indexOfCandidate(spot) else {
-            return
-        }
-
-        let elem = itinerary.candidateSpots.remove(at: index)
-        itinerary.confirmedSpots.append(elem)
+    private func confirm(_ spot: Spot, toDayIndex: Int) {
+        itinerary.confirmCandidate(spotID: spot.id, toDayIndex: toDayIndex)
+        spotPendingConfirmation = nil
     }
 
     private func unconfirm(_ spot: Spot) {
-        guard let index = indexOfConfirmed(spot) else {
+        guard let location = locationOfConfirmedSpot(spot) else {
             return
         }
 
-        let elem = itinerary.confirmedSpots.remove(at: index)
+        let elem = itinerary.itineraryDays[location.dayIndex].spots.remove(at: location.spotIndex)
         itinerary.candidateSpots.append(elem)
     }
 
     private func delete(_ spot: Spot) {
         itinerary.candidateSpots.removeAll { $0.id == spot.id }
-        itinerary.confirmedSpots.removeAll { $0.id == spot.id }
+        for dayIndex in itinerary.itineraryDays.indices {
+            itinerary.itineraryDays[dayIndex].spots.removeAll { $0.id == spot.id }
+        }
     }
 
     private func startEditing(_ spot: Spot) {
@@ -330,41 +433,100 @@ struct ItineraryEditorView: View {
             return
         }
 
-        if let index = indexOfConfirmed(spot) {
+        if let location = locationOfConfirmedSpot(spot) {
             let spot = editingDraft.spot()
-            itinerary.confirmedSpots[index] = spot
+            itinerary.itineraryDays[location.dayIndex].spots[location.spotIndex] = spot
             editingSpot = nil
             return
         }
     }
 
     private func moveConfirmedSpotUp(_ spot: Spot) {
-        guard let index = indexOfConfirmed(spot), 0 < index else {
+        guard let globalIndex = globalIndexOfConfirmedSpot(spot) else {
             return
         }
+        guard 0 < globalIndex else { return }
 
-        itinerary.confirmedSpots.swapAt(index, index - 1)
+        swapConfirmedSpots(from: globalIndex, to: globalIndex - 1)
     }
 
     private func moveConfirmedSpotDown(_ spot: Spot) {
-        guard let index = indexOfConfirmed(spot),
-              index < itinerary.confirmedSpots.count - 1 else {
+        guard let globalIndex = globalIndexOfConfirmedSpot(spot) else {
             return
         }
+        let flatCount = itinerary.itineraryDays.reduce(0) { $0 + $1.spots.count }
+        guard globalIndex < flatCount - 1 else { return }
 
-        itinerary.confirmedSpots.swapAt(index, index + 1)
+        swapConfirmedSpots(from: globalIndex, to: globalIndex + 1)
+    }
+
+    private func moveConfirmedSpotToPreviousDay(_ spot: Spot) {
+        guard let location = locationOfConfirmedSpot(spot) else { return }
+        let previousDayIndex = location.dayIndex - 1
+        guard previousDayIndex >= 0 else { return }
+
+        itinerary.moveSpot(
+            spotID: spot.id,
+            toDayIndex: previousDayIndex,
+            toSpotIndex: nil
+        )
+    }
+
+    private func moveConfirmedSpotToNextDay(_ spot: Spot) {
+        guard let location = locationOfConfirmedSpot(spot) else { return }
+        let nextDayIndex = location.dayIndex + 1
+        guard nextDayIndex < itinerary.itineraryDays.count else { return }
+
+        itinerary.moveSpot(
+            spotID: spot.id,
+            toDayIndex: nextDayIndex,
+            toSpotIndex: nil
+        )
     }
 
     private func indexOfCandidate(_ spot: Spot) -> Int? {
         itinerary.candidateSpots.firstIndex { $0.id == spot.id }
     }
-    
-    private func indexOfConfirmed(_ spot: Spot) -> Int? {
-        itinerary.confirmedSpots.firstIndex { $0.id == spot.id }
+
+    private func locationOfConfirmedSpot(_ spot: Spot) -> (dayIndex: Int, spotIndex: Int)? {
+        for (dayIndex, day) in itinerary.itineraryDays.enumerated() {
+            if let spotIndex = day.spots.firstIndex(where: { $0.id == spot.id }) {
+                return (dayIndex: dayIndex, spotIndex: spotIndex)
+            }
+        }
+        return nil
+    }
+
+    private func globalIndexOfConfirmedSpot(_ spot: Spot) -> Int? {
+        var index = 0
+        for day in itinerary.itineraryDays {
+            for element in day.spots {
+                if element.id == spot.id {
+                    return index
+                }
+                index += 1
+            }
+        }
+        return nil
+    }
+
+    private func swapConfirmedSpots(from i: Int, to j: Int) {
+        guard i != j else { return }
+
+        let dayCounts = itinerary.itineraryDays.map { $0.spots.count }
+        var flat = itinerary.itineraryDays.flatMap(\.spots)
+        flat.swapAt(i, j)
+
+        var cursor = 0
+        for dayIndex in itinerary.itineraryDays.indices {
+            let count = dayCounts[dayIndex]
+            itinerary.itineraryDays[dayIndex].spots = Array(flat[cursor..<(cursor + count)])
+            cursor += count
+        }
     }
 }
 
 #Preview {
     @Previewable @State var trip = TripPersistence.defaultTrip
-    ItineraryEditorView(itinerary: $trip.itinerary)
+    ItineraryEditorView(itinerary: $trip.itinerary, tripStartDate: trip.startDate)
 }

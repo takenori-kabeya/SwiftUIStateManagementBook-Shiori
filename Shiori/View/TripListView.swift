@@ -6,6 +6,8 @@ struct TripListView: View {
 
     @State private var editingTrip: Trip?
     @State private var editingTitle = ""
+    @State private var editingStartDate: Date = Date.now.date
+    @State private var editingDayCount: Int = 1
     
     @State private var hasLoaded: Bool = false
     
@@ -86,6 +88,11 @@ struct TripListView: View {
                 NavigationStack {
                     Form {
                         TextField("旅行名", text: $editingTitle)
+                        DatePicker("開始日", selection: $editingStartDate, displayedComponents: .date)
+                        let maxDayCount = max(10, trip.itinerary.itineraryDays.count)
+                        Stepper(value: $editingDayCount, in: 1...maxDayCount) {
+                            Text("\(editingDayCount)日")
+                        }
                     }
                     .navigationTitle("旅行を編集")
                     .toolbar {
@@ -117,6 +124,7 @@ struct TripListView: View {
             Trip(
                 id: UUID(),
                 title: title,
+                startDate: Date.now.date,
                 itinerary: Itinerary()
             )
         )
@@ -133,6 +141,8 @@ struct TripListView: View {
     private func startEditing(_ trip: Trip) {
         editingTrip = trip
         editingTitle = trip.title
+        editingStartDate = trip.startDate
+        editingDayCount = max(1, trip.itinerary.itineraryDays.count)
     }
     
     private func updateTrip(_ trip: Trip) {
@@ -142,8 +152,10 @@ struct TripListView: View {
             return
         }
 
-        if let index = trips.firstIndex(of: trip) {
+        if let index = trips.firstIndex(where: { $0.id == trip.id }) {
             trips[index].title = title
+            trips[index].startDate = editingStartDate
+            trips[index].itinerary.setDayCount(editingDayCount)
             editingTrip = nil
             return
         }

@@ -87,8 +87,7 @@ nonisolated enum ItineraryScheduleChecker {
         }
     }
 
-    private static func minutesSinceMidnight(from date: Date) -> Int {
-        let components = Calendar.current.dateComponents([.hour, .minute], from: date)
-        return (components.hour ?? 0) * 60 + (components.minute ?? 0)
+    private static func minutesSinceMidnight(from date: SpotTime) -> Int {
+        return (date.hour * 60 + date.minute)
     }
 }

@@ -10,8 +10,8 @@ struct ItineraryScheduleCheckerTests {
         minute: Int = 0,
         durationMinutes: Int? = nil
     ) -> Spot {
-        let startTime: Date? = hour.map { hour in
-            DateComponents(calendar: .current, year: 2000, hour: hour, minute: minute).date!
+        let startTime: SpotTime? = hour.map { hour in
+            SpotTime(hour: hour, minute: minute)
         }
         return Spot(id: id, title: title, startTime: startTime, durationMinutes: durationMinutes, memo: "")
     }
@@ -28,7 +28,7 @@ struct ItineraryScheduleCheckerTests {
         #expect(ItineraryScheduleChecker.isTimeOrderConsistent(in: spots))
     }
 
-    @Test func 到着時刻がある行き先が1件のとき順序ずれIDは空になること() {
+    @Test func 到着時刻がある行き先が一件のとき順序ずれIDは空になること() {
         let spots = [
             makeSpot(title: "A", hour: 10, minute: 0),
             makeSpot(title: "B"),
@@ -52,7 +52,7 @@ struct ItineraryScheduleCheckerTests {
         #expect(ItineraryScheduleChecker.isTimeOrderConsistent(in: spots))
     }
 
-    @Test func 到着時刻がある2件の行き先の並びが逆のとき両方のIDを返すこと() {
+    @Test func 到着時刻がある二件の行き先の並びが逆のとき両方のIDを返すこと() {
         let idA = UUID()
         let idB = UUID()
         let spots = [
@@ -114,8 +114,8 @@ struct ItineraryScheduleCheckerTests {
     @Test func 日付が違っても時と分だけで順序を比較すること() {
         let idA = UUID()
         let idB = UUID()
-        let startTimeA = DateComponents(calendar: .current, year: 1999, hour: 10, minute: 0).date!
-        let startTimeB = DateComponents(calendar: .current, year: 2025, hour: 12, minute: 0).date!
+        let startTimeA = SpotTime(hour: 10, minute: 0)
+        let startTimeB = SpotTime(hour: 12, minute: 0)
         let spots = [
             Spot(id: idB, title: "B", startTime: startTimeB, durationMinutes: nil, memo: ""),
             Spot(id: idA, title: "A", startTime: startTimeA, durationMinutes: nil, memo: ""),
@@ -138,7 +138,7 @@ struct ItineraryScheduleCheckerTests {
         #expect(!ItineraryScheduleChecker.hasTimeConflicts(in: spots))
     }
 
-    @Test func 到着時刻のみの2件の行き先のとき時間重なりIDは空になること() {
+    @Test func 到着時刻のみの二件の行き先のとき時間重なりIDは空になること() {
         let idA = UUID()
         let idB = UUID()
         let spots = [

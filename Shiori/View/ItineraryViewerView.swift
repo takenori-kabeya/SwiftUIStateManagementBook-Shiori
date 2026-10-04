@@ -8,13 +8,18 @@ enum ItinerarySpotStatus {
 
 struct ItineraryViewerView: View {
     let itinerary: Itinerary
+    let tripStartDate: Date
 
     private var misalignedSpotIDs: Set<UUID> {
-        ItineraryScheduleChecker.misalignedSpotIDs(in: itinerary.confirmedSpots)
+        itinerary.itineraryDays.reduce(into: Set<UUID>()) { result, day in
+            result.formUnion(ItineraryScheduleChecker.misalignedSpotIDs(in: day.spots))
+        }
     }
 
     private var conflictingSpotIDs: Set<UUID> {
-        ItineraryScheduleChecker.conflictingSpotIDs(in: itinerary.confirmedSpots)
+        itinerary.itineraryDays.reduce(into: Set<UUID>()) { result, day in
+            result.formUnion(ItineraryScheduleChecker.conflictingSpotIDs(in: day.spots))
+        }
     }
 
     var body: some View {
@@ -28,11 +33,19 @@ struct ItineraryViewerView: View {
     private func content(now: Date) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                if let current = currentSpot(at: now) {
+                if let current = ItineraryCurrentNextResolver.currentSpot(
+                    in: itinerary,
+                    tripStartDate: tripStartDate,
+                    now: now
+                ) {
                     CurrentSpotCard(spot: current)
                 }
 
-                if let next = nextSpot(at: now) {
+                if let next = ItineraryCurrentNextResolver.nextSpot(
+                    in: itinerary,
+                    tripStartDate: tripStartDate,
+                    now: now
+                ) {
                     NextSpotCard(spot: next)
                 }
 
@@ -52,15 +65,29 @@ struct ItineraryViewerView: View {
                     }
 
                     VStack(spacing: 12) {
-                        ForEach(Array(itinerary.confirmedSpots.enumerated()), id: \.element.id) { index, spot in
-                            ItinerarySpotDisplayRow(
-                                spot: spot,
-                                index: index,
-                                isLast: index == itinerary.confirmedSpots.count - 1,
-                                isTimeOrderMisaligned: misalignedSpotIDs.contains(spot.id),
-                                isTimeConflict: conflictingSpotIDs.contains(spot.id)
-                            ) {
-                                statusBadge(for: spot, at: now)
+                        let dayOffsets: [Int] = itinerary.itineraryDays.indices.map { dayIndex in
+                            itinerary.itineraryDays[..<dayIndex].reduce(0) { $0 + $1.spots.count }
+                        }
+
+                        ForEach(Array(itinerary.itineraryDays.enumerated()), id: \.offset) { dayIndex, day in
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text(dayTitle(dayIndex))
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.leading, 4)
+
+                                ForEach(Array(day.spots.enumerated()), id: \.element.id) { spotIndex, spot in
+                                    let globalIndex = dayOffsets[dayIndex] + spotIndex
+                                    ItinerarySpotDisplayRow(
+                                        spot: spot,
+                                        index: globalIndex,
+                                        isLast: spotIndex == day.spots.count - 1,
+                                        isTimeOrderMisaligned: misalignedSpotIDs.contains(spot.id),
+                                        isTimeConflict: conflictingSpotIDs.contains(spot.id)
+                                    ) {
+                                        statusBadge(for: spot, at: now)
+                                    }
+                                }
                             }
                         }
                     }
@@ -85,35 +112,33 @@ struct ItineraryViewerView: View {
     }
 
     private func spotStatus(for spot: Spot, at now: Date) -> ItinerarySpotStatus {
-        if currentSpot(at: now)?.id == spot.id {
+        if ItineraryCurrentNextResolver.currentSpot(
+            in: itinerary,
+            tripStartDate: tripStartDate,
+            now: now
+        )?.id == spot.id {
             return .current
         }
-        if nextSpot(at: now)?.id == spot.id {
+        if ItineraryCurrentNextResolver.nextSpot(
+            in: itinerary,
+            tripStartDate: tripStartDate,
+            now: now
+        )?.id == spot.id {
             return .next
         }
         return .none
     }
 
-    private func currentSpot(at now: Date) -> Spot? {
-        ItineraryCurrentNextResolver.currentSpot(in: itinerary.confirmedSpots, at: now)
+    private func dayTitle(_ dayIndex: Int) -> String {
+        return DayTitleFormatter.dayTitleText(tripStartDate: tripStartDate, dayIndex: dayIndex)
     }
 
-    private func nextSpot(at now: Date) -> Spot? {
-        ItineraryCurrentNextResolver.nextSpot(in: itinerary.confirmedSpots, at: now)
-    }
-    
-    private func getTimeOfToday(_ dateTime: Date) -> Date {
-        let dateComponents = Calendar.current.dateComponents([.calendar, .year, .month, .day], from: Date.now)
-        let timeComponents = Calendar.current.dateComponents([.calendar, .hour, .minute], from: dateTime)
-        let time = DateComponents(calendar: dateComponents.calendar, year: dateComponents.year, month: dateComponents.month, day: dateComponents.day, hour: timeComponents.hour, minute: timeComponents.minute).date!
-        return time
-    }
 }
 
 #Preview {
     @Previewable @State var trip = TripPersistence.defaultTrip
     
     NavigationStack {
-        ItineraryViewerView(itinerary: trip.itinerary)
+        ItineraryViewerView(itinerary: trip.itinerary, tripStartDate: trip.startDate)
     }
 }
