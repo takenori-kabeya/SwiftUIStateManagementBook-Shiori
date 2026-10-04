@@ -44,8 +44,8 @@ struct TripListView: View {
                         }
                         else {
                             NavigationLink(trip.title) {
-                                ItineraryEditorView(
-                                    itinerary: $trip.itinerary
+                                TripDetailView(
+                                    trip: $trip
                                 )
                             }
                         }
