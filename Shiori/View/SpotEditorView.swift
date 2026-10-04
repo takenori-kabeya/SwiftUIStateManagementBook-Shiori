@@ -1,29 +1,27 @@
 import SwiftUI
+import ComposableArchitecture
 
 struct SpotEditorView: View {
-    @Binding var editingDraft: SpotDraft
-    
-    let onCancel: () -> Void
-    let onSave: () -> Void
+    @Bindable var store: StoreOf<SpotFeature>
     
     var body: some View {
         NavigationStack {
             Form {
-                TextField("行き先名", text: $editingDraft.title)
-                Toggle("予定到着時刻を指定する", isOn: $editingDraft.hasStartTime)
-                DatePicker("予定到着時刻", selection: $editingDraft.startTime, displayedComponents: .hourAndMinute)
-                    .disabled(!editingDraft.hasStartTime)
-                Toggle("予定滞在時間を指定する", isOn: $editingDraft.hasDurationMinutes)
-                Stepper("予定滞在時間: \(editingDraft.durationMinutes) (分)", value: $editingDraft.durationMinutes, in: 5...480, step: 5)
-                    .disabled(!editingDraft.hasDurationMinutes)
+                TextField("行き先名", text: $store.draft.title.sending(\.titleChanged))
+                Toggle("予定到着時刻を指定する", isOn: $store.draft.hasStartTime.sending(\.hasStartTimeChanged))
+                DatePicker("予定到着時刻", selection: $store.draft.startTime.sending(\.startTimeChanged), displayedComponents: .hourAndMinute)
+                    .disabled(!store.draft.hasStartTime)
+                Toggle("予定滞在時間を指定する", isOn: $store.draft.hasDurationMinutes.sending(\.hasDurationMinutesChanged))
+                Stepper("予定滞在時間: \(store.draft.durationMinutes) (分)", value: $store.draft.durationMinutes.sending(\.durationMinutesChanged), in: 5...480, step: 5)
+                    .disabled(!store.draft.hasDurationMinutes)
                 ZStack(alignment: .topLeading) {
-                    if editingDraft.memo.isEmpty {
+                    if store.draft.memo.isEmpty {
                         Text("メモ")
                             .foregroundStyle(.tertiary)
                             .padding(.top, 8)
                             .padding(.leading, 5)
                     }
-                    TextEditor(text: $editingDraft.memo)
+                    TextEditor(text: $store.draft.memo.sending(\.memoChanged))
                         .frame(minHeight: 100)
                         .scrollContentBackground(.hidden)
                 }
@@ -33,14 +31,12 @@ struct SpotEditorView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("キャンセル") {
-                        //editingSpot = nil
-                        onCancel()
+                        store.send(.cancelButtonTapped)
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") {
-                        //saveEditingSpot()
-                        onSave()
+                        store.send(.saveButtonTapped)
                     }
                 }
             }

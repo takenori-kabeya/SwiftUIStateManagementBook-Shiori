@@ -10,6 +10,7 @@ struct ItineraryFeature {
 
     enum Action {
         case editSpot(PresentationAction<SpotFeature.Action>)
+        case editButtonTapped(Spot)
 
         case addCandidateButtonTapped(title: String)
         case confirmButtonTapped(spotID: Spot.ID, dayID: ItineraryDay.ID)
@@ -18,7 +19,6 @@ struct ItineraryFeature {
         case moveDownButtonTapped(spotID: Spot.ID)
         case moveToPreviousDayButtonTapped(spotID: Spot.ID)
         case moveToNextDayButtonTapped(spotID: Spot.ID)
-        case spotUpdated(Spot)
         case deleteButtonTapped(spotID: Spot.ID)
         case autoShiftButtonTapped(dayID: ItineraryDay.ID)
     }
@@ -47,9 +47,6 @@ struct ItineraryFeature {
             case let .moveToNextDayButtonTapped(spotID):
                 state.itinerary.moveSpotToNextDay(spotID: spotID)
                 return .none
-            case let .spotUpdated(spot):
-                state.itinerary.updateSpot(spot)
-                return .none
             case let .deleteButtonTapped(spotID):
                 state.itinerary.deleteSpot(spotID: spotID)
                 return .none
@@ -64,6 +61,10 @@ struct ItineraryFeature {
                 // 特に何もしない
                 return .none
             case .editSpot:
+                return .none
+
+            case let .editButtonTapped(spot):
+                state.editSpot = SpotFeature.State(draft: SpotDraft(spot: spot))
                 return .none
             }
         }

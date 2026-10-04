@@ -272,12 +272,10 @@ struct ConfirmedItineraryView: View {
 }
 
 struct ItineraryEditorView: View {
-    var store: StoreOf<ItineraryFeature>
+    @Bindable var store: StoreOf<ItineraryFeature>
     let tripStartDate: Date
     @State private var newTitle = ""
 
-    @State private var editingSpot: Spot?
-    @State private var editingDraft: SpotDraft = .empty
     @State private var spotPendingConfirmation: Spot?
 
     private var timeMisalignedSpotIDs: Set<UUID> {
@@ -344,10 +342,8 @@ struct ItineraryEditorView: View {
                 }
             }
         }
-        .sheet(item: $editingSpot) { _ in
-            SpotEditorView(editingDraft: $editingDraft,
-                           onCancel: { editingSpot = nil },
-                           onSave: { saveEditingSpot() })
+        .sheet(item: $store.scope(state: \.editSpot, action: \.editSpot)) { spotStore in
+            SpotEditorView(store: spotStore)
         }
     }
 
@@ -376,17 +372,7 @@ struct ItineraryEditorView: View {
     }
 
     private func startEditing(_ spot: Spot) {
-        editingSpot = spot
-        editingDraft = SpotDraft(spot: spot)
-    }
-
-    private func saveEditingSpot() {
-        let updated = editingDraft.spot()
-        let before = store.itinerary
-        store.send(.spotUpdated(updated))
-        if store.itinerary != before {
-            editingSpot = nil
-        }
+        store.send(.editButtonTapped(spot))
     }
 
     private func moveConfirmedSpotUp(_ spot: Spot) {
