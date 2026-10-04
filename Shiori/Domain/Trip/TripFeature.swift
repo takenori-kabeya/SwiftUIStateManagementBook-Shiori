@@ -6,9 +6,9 @@ struct TripFeature {
     @ObservableState
     struct State: Equatable, Identifiable {
         var id: UUID {
-            info.id
+            trip.id
         }
-        var info: TripInfo
+        @Shared var trip: Trip
         var itinerary: ItineraryFeature.State
         var weatherForecast: WeatherForecastFeature.State
     }
@@ -42,8 +42,12 @@ struct TripFeature {
                 return .none
             case let .tripUpdateRequested(draft):
                 let previous = state.weatherForecast.forecastCondition
-                state.info = draft.info
-                state.itinerary.itinerary.setDayCount(draft.newNumDays)
+                state.$trip.withLock {
+                    $0.info = draft.info
+                }
+                state.itinerary.$itinerary.withLock {
+                    $0.setDayCount(draft.newNumDays)
+                }
                 let next = State.forecastCondition(from: draft)
                 if previous != next {
                     return .run { send in
@@ -61,20 +65,28 @@ struct TripFeature {
 
 extension TripFeature.State {
     init(trip: Trip) {
-        self.info = trip.info
+        let sharedTrip = Shared(value: trip)
+        self._trip = sharedTrip
         self.itinerary = ItineraryFeature.State(
-            itinerary: trip.itinerary
+            itinerary: sharedTrip.itinerary
         )
         self.weatherForecast = WeatherForecastFeature.State(
             forecastCondition: Self.forecastCondition(from: trip)
         )
     }
+    
+    init(trip: Shared<Trip>) {
+        self._trip = trip
+        self.itinerary = ItineraryFeature.State(
+            itinerary: trip.itinerary
+        )
+        self.weatherForecast = WeatherForecastFeature.State(
+            forecastCondition: Self.forecastCondition(from: trip.wrappedValue)
+        )
+    }
 
     func makeTrip() -> Trip {
-        Trip(
-            info: info,
-            itinerary: itinerary.itinerary
-        )
+        return trip
     }
 
     static func forecastCondition(from draft: TripDraft) -> ForecastCondition {

@@ -56,7 +56,9 @@ struct ItineraryFeatureTests {
             ItineraryFeature()
         }
         await store.send(.autoShiftButtonTapped(dayID: day1ID)) {
-            $0.itinerary.itineraryDays[0].spots[1].startTime = SpotTime(hour: 11, minute: 30)
+            $0.$itinerary.withLock {
+                $0.itineraryDays[0].spots[1].startTime = SpotTime(hour: 11, minute: 30)
+            }
         }
         await store.receive(\.delegate.itineraryUpdated)
     }
@@ -94,7 +96,9 @@ struct ItineraryFeatureTests {
 
         let newTitle = "新候補"
         await store.send(.addCandidateButtonTapped(title: newTitle)) {
-            $0.itinerary.candidateSpots.append(makeSpot(id: implicitSpotID, title: newTitle))
+            $0.$itinerary.withLock {
+                $0.candidateSpots.append(makeSpot(id: implicitSpotID, title: newTitle))
+            }
         }
         await store.receive(\.delegate.itineraryUpdated)
         #expect(store.state.itinerary.candidateSpots.map(\.title) == ["新候補"])
@@ -129,8 +133,10 @@ struct ItineraryFeatureTests {
             $0.daySelection = ItineraryFeature.DaySelectionState(spot: candidate)
         }
         await store.send(.daySelected(dayID: day1ID)) {
-            $0.itinerary.candidateSpots = []
-            $0.itinerary.itineraryDays[1].spots = [candidate]
+            $0.$itinerary.withLock {
+                $0.candidateSpots = []
+                $0.itineraryDays[1].spots = [candidate]
+            }
             $0.daySelection = nil
         }
         await store.receive(\.delegate.itineraryUpdated)
@@ -192,8 +198,10 @@ struct ItineraryFeatureTests {
             ItineraryFeature()
         }
         await store.send(.returnToCandidateButtonTapped(spotID: spotID)) {
-            $0.itinerary.itineraryDays[0].spots = []
-            $0.itinerary.candidateSpots = [spot]
+            $0.$itinerary.withLock {
+                $0.itineraryDays[0].spots = []
+                $0.candidateSpots = [spot]
+            }
         }
         await store.receive(\.delegate.itineraryUpdated)
     }
@@ -216,7 +224,9 @@ struct ItineraryFeatureTests {
         }
 
         await store.send(.moveUpButtonTapped(spotID: spotBID)) {
-            $0.itinerary.itineraryDays[0].spots = [spotB, spotA]
+            $0.$itinerary.withLock {
+                $0.itineraryDays[0].spots = [spotB, spotA]
+            }
         }
         await store.receive(\.delegate.itineraryUpdated)
     }
@@ -240,7 +250,9 @@ struct ItineraryFeatureTests {
         }
 
         await store.send(.moveDownButtonTapped(spotID: spotAID)) {
-            $0.itinerary.itineraryDays[0].spots = [spotB, spotA]
+            $0.$itinerary.withLock {
+                $0.itineraryDays[0].spots = [spotB, spotA]
+            }
         }
         await store.receive(\.delegate.itineraryUpdated)
     }
@@ -264,8 +276,10 @@ struct ItineraryFeatureTests {
         }
 
         await store.send(.moveToPreviousDayButtonTapped(spotID: spotBID)) {
-            $0.itinerary.itineraryDays[0].spots = [spotA, spotB]
-            $0.itinerary.itineraryDays[1].spots = []
+            $0.$itinerary.withLock {
+                $0.itineraryDays[0].spots = [spotA, spotB]
+                $0.itineraryDays[1].spots = []
+            }
         }
         await store.receive(\.delegate.itineraryUpdated)
     }
@@ -289,8 +303,10 @@ struct ItineraryFeatureTests {
         }
 
         await store.send(.moveToNextDayButtonTapped(spotID: spotAID)) {
-            $0.itinerary.itineraryDays[0].spots = []
-            $0.itinerary.itineraryDays[1].spots = [spotB, spotA]
+            $0.$itinerary.withLock {
+                $0.itineraryDays[0].spots = []
+                $0.itineraryDays[1].spots = [spotB, spotA]
+            }
         }
         await store.receive(\.delegate.itineraryUpdated)
     }
@@ -330,7 +346,9 @@ struct ItineraryFeatureTests {
         }
 
         await store.send(.deleteConfirmed) {
-            $0.itinerary.itineraryDays[0].spots = []
+            $0.$itinerary.withLock {
+                $0.itineraryDays[0].spots = []
+            }
             $0.spotPendingDeletion = nil
         }
         await store.receive(\.delegate.itineraryUpdated)
@@ -383,7 +401,9 @@ struct ItineraryFeatureTests {
 
         await store.send(.editSpot(.presented(.saveButtonTapped)))
         await store.receive(\.editSpot.delegate.presented.saveRequested) {
-            $0.itinerary.candidateSpots = [expectedDraft.spot()]
+            $0.$itinerary.withLock {
+                $0.candidateSpots = [expectedDraft.spot()]
+            }
         }
         await store.receive(\.delegate.itineraryUpdated)
         await store.receive(\.editSpot.dismiss) {
@@ -451,7 +471,9 @@ struct ItineraryFeatureTests {
 
         await store.send(.editSpot(.presented(.saveButtonTapped)))
         await store.receive(\.editSpot.presented.delegate.saveRequested) {
-            $0.itinerary.itineraryDays[0].spots[0] = extendedA
+            $0.$itinerary.withLock {
+                $0.itineraryDays[0].spots[0] = extendedA
+            }
             $0.scheduleShiftPending = ItineraryFeature.ScheduleShiftPending(
                 dayID: dayID,
                 fromSpotID: spotBID
@@ -487,7 +509,9 @@ struct ItineraryFeatureTests {
         }
 
         await store.send(.scheduleShiftConfirmed) {
-            $0.itinerary.itineraryDays[0].spots[1].startTime = SpotTime(hour: 11, minute: 30)
+            $0.$itinerary.withLock {
+                $0.itineraryDays[0].spots[1].startTime = SpotTime(hour: 11, minute: 30)
+            }
             $0.scheduleShiftPending = nil
         }
         await store.receive(\.delegate.itineraryUpdated)
@@ -549,7 +573,9 @@ struct ItineraryFeatureTests {
 
         await store.send(.editSpot(.presented(.saveButtonTapped)))
         await store.receive(\.editSpot.presented.delegate.saveRequested) {
-            $0.itinerary.itineraryDays[0].spots[0] = expectedDraft.spot()
+            $0.$itinerary.withLock {
+                $0.itineraryDays[0].spots[0] = expectedDraft.spot()
+            }
         }
         await store.receive(\.delegate.itineraryUpdated)
         await store.receive(\.editSpot.dismiss) {
@@ -586,7 +612,9 @@ struct ItineraryFeatureTests {
 
         await store.send(.editSpot(.presented(.saveButtonTapped)))
         await store.receive(\.editSpot.presented.delegate.saveRequested) {
-            $0.itinerary.itineraryDays[0].spots[0] = expectedDraft.spot()
+            $0.$itinerary.withLock {
+                $0.itineraryDays[0].spots[0] = expectedDraft.spot()
+            }
         }
         await store.receive(\.delegate.itineraryUpdated)
         await store.receive(\.editSpot.dismiss) {
@@ -622,7 +650,9 @@ struct ItineraryFeatureTests {
 
         await store.send(.editSpot(.presented(.saveButtonTapped)))
         await store.receive(\.editSpot.presented.delegate.saveRequested) {
-            $0.itinerary.itineraryDays[0].spots[0] = expectedDraft.spot()
+            $0.$itinerary.withLock {
+                $0.itineraryDays[0].spots[0] = expectedDraft.spot()
+            }
         }
         await store.receive(\.delegate.itineraryUpdated)
         await store.receive(\.editSpot.dismiss) {
@@ -659,7 +689,9 @@ struct ItineraryFeatureTests {
 
         await store.send(.editSpot(.presented(.saveButtonTapped)))
         await store.receive(\.editSpot.presented.delegate.saveRequested) {
-            $0.itinerary.itineraryDays[0].spots[0] = expectedDraft.spot()
+            $0.$itinerary.withLock {
+                $0.itineraryDays[0].spots[0] = expectedDraft.spot()
+            }
         }
         await store.receive(\.delegate.itineraryUpdated)
         await store.receive(\.editSpot.dismiss) {
@@ -699,7 +731,9 @@ struct ItineraryFeatureTests {
 
         await store.send(.editSpot(.presented(.saveButtonTapped)))
         await store.receive(\.editSpot.presented.delegate.saveRequested) {
-            $0.itinerary.itineraryDays[0].spots[1] = expectedDraft.spot()
+            $0.$itinerary.withLock {
+                $0.itineraryDays[0].spots[1] = expectedDraft.spot()
+            }
         }
         await store.receive(\.delegate.itineraryUpdated)
         await store.receive(\.editSpot.dismiss) {
@@ -750,7 +784,9 @@ struct ItineraryFeatureTests {
 
         await store.send(.editSpot(.presented(.saveButtonTapped)))
         await store.receive(\.editSpot.presented.delegate.saveRequested) {
-            $0.itinerary.itineraryDays[0].spots[0] = shiftedA
+            $0.$itinerary.withLock {
+                $0.itineraryDays[0].spots[0] = shiftedA
+            }
             $0.scheduleShiftPending = ItineraryFeature.ScheduleShiftPending(
                 dayID: dayID,
                 fromSpotID: spotBID
@@ -790,8 +826,10 @@ struct ItineraryFeatureTests {
         }
 
         await store.send(.scheduleShiftConfirmed) {
-            $0.itinerary.itineraryDays[0].spots[1].startTime = SpotTime(hour: 11, minute: 30)
-            $0.itinerary.itineraryDays[0].spots[2].startTime = SpotTime(hour: 12, minute: 30)
+            $0.$itinerary.withLock {
+                $0.itineraryDays[0].spots[1].startTime = SpotTime(hour: 11, minute: 30)
+                $0.itineraryDays[0].spots[2].startTime = SpotTime(hour: 12, minute: 30)
+            }
             $0.scheduleShiftPending = nil
         }
         await store.receive(\.delegate.itineraryUpdated)

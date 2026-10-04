@@ -184,7 +184,9 @@ struct TripsFeatureTests {
                 )
             )
         ) {
-            $0.trips[id: tripID]?.itinerary.itinerary.candidateSpots.append(makeSpot(id: implicitSpotID, title: spotTitle))
+            $0.trips[id: tripID]?.itinerary.$itinerary.withLock {
+                $0.candidateSpots.append(makeSpot(id: implicitSpotID, title: spotTitle))
+            }
         }
         await store.receive(\.trips[id: tripID].itinerary.delegate.itineraryUpdated)
         await store.receive(\.trips[id: tripID].delegate.tripUpdated)
@@ -193,7 +195,7 @@ struct TripsFeatureTests {
         await store.receive(\.saveCompleted)
 
         #expect(store.state.trips[id: tripID]?.itinerary.itinerary.candidateSpots.map(\.title) == ["候補"])
-        #expect(store.state.trips[id: tripID]?.info.title == "東京")
+        #expect(store.state.trips[id: tripID]?.trip.info.title == "東京")
     }
     
     @Test func Dependencyで差し替えて読み込むと旅行一覧を置き換えること() async {
@@ -249,9 +251,7 @@ struct TripsFeatureTests {
 
         await store.send(.editTrip(.presented(.saveButtonTapped)))
         await store.receive(\.editTrip.presented.delegate.saveRequested)
-        await store.receive(\.trips[id: tripID].tripUpdateRequested) {
-            $0.trips[id: tripID]?.info = saved.info
-        }
+        await store.receive(\.trips[id: tripID].tripUpdateRequested)
         await store.receive(\.trips[id: tripID].delegate.tripUpdated)
         await store.receive(\.tripUpdated)
         await store.receive(\.save)
@@ -260,7 +260,7 @@ struct TripsFeatureTests {
         }
         await store.receive(\.saveCompleted)
 
-        #expect(store.state.trips[id: tripID]?.info.title == "新")
+        #expect(store.state.trips[id: tripID]?.trip.info.title == "新")
         #expect(store.state.editTrip == nil)
     }
     
@@ -293,7 +293,7 @@ struct TripsFeatureTests {
             $0.editTrip = nil
         }
 
-        #expect(store.state.trips[id: tripID]?.info.title == "元のタイトル")
+        #expect(store.state.trips[id: tripID]?.trip.info.title == "元のタイトル")
         #expect(store.state.trips[id: tripID]?.id == trip.id)
         #expect(store.state.editTrip == nil)
     }

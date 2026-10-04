@@ -60,7 +60,7 @@ struct TripFeatureTests {
         let restored = state.makeTrip()
 
         #expect(state.id == tripID)
-        #expect(state.info == trip.info)
+        #expect(state.trip.info == trip.info)
         #expect(restored == trip)
     }
 
@@ -79,14 +79,15 @@ struct TripFeatureTests {
         let spotID = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!  // 1の次なので2になるはず
         let spotTitle = "新候補"
         await store.send(.itinerary(.addCandidateButtonTapped(title: spotTitle))) {
-            $0.itinerary.itinerary.candidateSpots.append(Spot(id: spotID, title: spotTitle))
+            $0.itinerary.$itinerary.withLock {
+                $0.candidateSpots.append(Spot(id: spotID, title: spotTitle))
+            }
         }
-        
         await store.receive(\.itinerary.delegate.itineraryUpdated)
         await store.receive(\.delegate.tripUpdated)
 
-        #expect(store.state.itinerary.itinerary.candidateSpots.map(\.title) == [spotTitle])
-        #expect(store.state.info == trip.info)
+        #expect(store.state.itinerary.itinerary.candidateSpots.map(\.title) == ["新候補"])
+        #expect(store.state.trip.info == trip.info)
     }
 
     @Test func 自動シフトで時間重なりを解消すること() async {
@@ -111,7 +112,9 @@ struct TripFeatureTests {
         }
 
         await store.send(.itinerary(.autoShiftButtonTapped(dayID: dayID))) {
-            $0.itinerary.itinerary.itineraryDays[0].spots[1].startTime = SpotTime(hour: 11, minute: 30)
+            $0.itinerary.$itinerary.withLock {
+                $0.itineraryDays[0].spots[1].startTime = SpotTime(hour: 11, minute: 30)
+            }
         }
         
         await store.receive(\.itinerary.delegate.itineraryUpdated)

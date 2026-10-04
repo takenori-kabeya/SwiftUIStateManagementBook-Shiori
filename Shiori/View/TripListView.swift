@@ -25,20 +25,20 @@ struct TripListView: View {
                     ForEach(store.scope(state: \.trips, action: \.trips)) { tripStore in
                         if (isEditing) {
                             HStack {
-                                Text(tripStore.info.title)
+                                Text(tripStore.trip.info.title)
                                 Spacer()
                                 Button("編集") {
-                                    store.send(.editButtonTapped(tripStore.info.id))
+                                    store.send(.editButtonTapped(tripStore.trip.info.id))
                                 }
                                 .buttonStyle(.borderless)
                                 Button("削除", role: .destructive) {
-                                    delete(tripStore.info.id)
+                                    delete(tripStore.trip.info.id)
                                 }
                                 .buttonStyle(.borderless)
                             }
                         }
                         else {
-                            NavigationLink(tripStore.info.title) {
+                            NavigationLink(tripStore.trip.info.title) {
                                 TripDetailView(store: tripStore)
                             }
                         }

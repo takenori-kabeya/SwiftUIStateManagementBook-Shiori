@@ -13,13 +13,42 @@ struct ItineraryFeature {
     
     @ObservableState
     struct State: Equatable {
-        var itinerary: Itinerary
+        @Shared var itinerary: Itinerary
         @Presents var editSpot: SpotFeature.State?
         var daySelection: DaySelectionState?
         var scheduleShiftPending: ScheduleShiftPending?
         var spotPendingDeletion: Spot.ID?
-    }
+    
+        init(
+            itinerary: Shared<Itinerary>,
+            editSpot: SpotFeature.State? = nil,
+            daySelection: DaySelectionState? = nil,
+            spotPendingDeletion: Spot.ID? = nil,
+            scheduleShiftPending: ScheduleShiftPending? = nil
+        ) {
+            self._itinerary = itinerary
+            self.editSpot = editSpot
+            self.daySelection = daySelection
+            self.spotPendingDeletion = spotPendingDeletion
+            self.scheduleShiftPending = scheduleShiftPending
+        }
 
+        init(
+            itinerary: Itinerary,
+            editSpot: SpotFeature.State? = nil,
+            daySelection: DaySelectionState? = nil,
+            spotPendingDeletion: Spot.ID? = nil,
+            scheduleShiftPending: ScheduleShiftPending? = nil
+        ) {
+            self.init(
+                itinerary: Shared(value: itinerary),
+                editSpot: editSpot,
+                daySelection: daySelection,
+                spotPendingDeletion: spotPendingDeletion,
+                scheduleShiftPending: scheduleShiftPending
+            )
+        }
+    }
     enum Action {
         case editSpot(PresentationAction<SpotFeature.Action>)
         case editButtonTapped(Spot)
@@ -51,25 +80,37 @@ struct ItineraryFeature {
         Reduce { state, action in
             switch action {
             case let .addCandidateButtonTapped(title):
-                state.itinerary.addCandidate(title: title)
+                state.$itinerary.withLock {
+                    $0.addCandidate(title: title)
+                }
                 return .send(.delegate(.itineraryUpdated))
             case let .confirmButtonTapped(spot):
                 state.daySelection = DaySelectionState(spot: spot)
                 return .none
             case let .returnToCandidateButtonTapped(spotID):
-                state.itinerary.returnSpotToCandidates(spotID: spotID)
+                state.$itinerary.withLock {
+                    $0.returnSpotToCandidates(spotID: spotID)
+                }
                 return .send(.delegate(.itineraryUpdated))
             case let .moveUpButtonTapped(spotID):
-                state.itinerary.moveConfirmedSpotUp(spotID: spotID)
+                state.$itinerary.withLock {
+                    $0.moveConfirmedSpotUp(spotID: spotID)
+                }
                 return .send(.delegate(.itineraryUpdated))
             case let .moveDownButtonTapped(spotID):
-                state.itinerary.moveConfirmedSpotDown(spotID: spotID)
+                state.$itinerary.withLock {
+                    $0.moveConfirmedSpotDown(spotID: spotID)
+                }
                 return .send(.delegate(.itineraryUpdated))
             case let .moveToPreviousDayButtonTapped(spotID):
-                state.itinerary.moveSpotToPreviousDay(spotID: spotID)
+                state.$itinerary.withLock {
+                    $0.moveSpotToPreviousDay(spotID: spotID)
+                }
                 return .send(.delegate(.itineraryUpdated))
             case let .moveToNextDayButtonTapped(spotID):
-                state.itinerary.moveSpotToNextDay(spotID: spotID)
+                state.$itinerary.withLock {
+                    $0.moveSpotToNextDay(spotID: spotID)
+                }
                 return .send(.delegate(.itineraryUpdated))
             case let .deleteButtonTapped(spotID):
                 state.spotPendingDeletion = spotID
@@ -78,7 +119,9 @@ struct ItineraryFeature {
                 guard let spotID = state.spotPendingDeletion else {
                     return .none
                 }
-                state.itinerary.deleteSpot(spotID: spotID)
+                state.$itinerary.withLock {
+                    $0.deleteSpot(spotID: spotID)
+                }
                 state.spotPendingDeletion = nil
                 return .send(.delegate(.itineraryUpdated))
             case .deleteConfirmationDismissed:
@@ -86,13 +129,20 @@ struct ItineraryFeature {
                 return .none
             case let .autoShiftButtonTapped(dayID):
                 // 指定日の後続予定をずらす
-                state.itinerary.resolveScheduleConflicts(dayID: dayID)
+                state.$itinerary.withLock {
+                    $0.resolveScheduleConflicts(dayID: dayID)
+                }
                 return .send(.delegate(.itineraryUpdated))
             case .scheduleShiftConfirmed:
                 guard let pending = state.scheduleShiftPending else {
                     return .none
                 }
-                state.itinerary.resolveScheduleConflicts(dayID: pending.dayID, fromSpotID: pending.fromSpotID)
+                state.$itinerary.withLock {
+                    $0.resolveScheduleConflicts(
+                        dayID: pending.dayID,
+                        fromSpotID: pending.fromSpotID
+                    )
+                }
                 state.scheduleShiftPending = nil
                 return .send(.delegate(.itineraryUpdated))
             case .scheduleShiftDismissed:
@@ -103,7 +153,9 @@ struct ItineraryFeature {
                     return .none
                 }
                 let updated = draft.spot()
-                state.itinerary.updateSpot(updated)
+                state.$itinerary.withLock {
+                    $0.updateSpot(updated)
+                }
                 state.scheduleShiftPending = scheduleShiftPendingIfNeeded(
                     itinerary: state.itinerary,
                     previous: previous,
@@ -122,7 +174,9 @@ struct ItineraryFeature {
                 guard let spot = state.daySelection?.spot else {
                     return .none
                 }
-                state.itinerary.confirmCandidate(spotID: spot.id, toDayID: dayID)
+                state.$itinerary.withLock {
+                    $0.confirmCandidate(spotID: spot.id, toDayID: dayID)
+                }
                 state.daySelection = nil
                 return .send(.delegate(.itineraryUpdated))
             case .daySelectionDismissed:

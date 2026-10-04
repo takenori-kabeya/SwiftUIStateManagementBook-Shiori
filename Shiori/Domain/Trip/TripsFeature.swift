@@ -97,7 +97,7 @@ struct TripsFeature {
                 guard let tripState = state.trips[id: tripID] else {
                     return .none
                 }
-                let draft = TripDraft(info: tripState.info, itinerary: tripState.itinerary.itinerary)
+                let draft = TripDraft(info: tripState.trip.info, itinerary: tripState.itinerary.itinerary)
                 state.editTrip = TripEditFeature.State(draft: draft)
                 return .none
             }
