@@ -36,11 +36,18 @@ extension TripPersistence {
                         Itinerary(candidateSpots: [
                             Spot(id: UUID(), title: "東京タワー")
                         ], confirmedSpots: [
-                            Spot(id: UUID(), title: "浅草寺"),
+                            Spot(id: UUID(), title: "浅草寺", startTime: getTime(hour: 10, minute: 30), durationMinutes: 30 ,memo: "お土産を買う"),
                             Spot(id: UUID(), title: "スカイツリー")
                         ]))
     }
-
+    
+    nonisolated static func getTime(hour: Int, minute: Int) -> Date {
+        if let date = DateComponents(calendar: .current, year: 2000, hour: hour, minute: minute).date {
+            return date
+        }
+        return Date.now
+    }
+    
     nonisolated private static var fileURL: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("itinerary.json")

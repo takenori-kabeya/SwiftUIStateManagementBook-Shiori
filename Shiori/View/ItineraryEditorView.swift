@@ -8,6 +8,9 @@ struct ItineraryEditorView: View {
 
     @State private var editingSpot: Spot?
     @State private var editingTitle = ""
+    @State private var editingStartTime = Date()
+    @State private var editingDurationMinutes = 60
+    @State private var editingMemo = ""
 
     var body: some View {
         List {
@@ -78,6 +81,9 @@ struct ItineraryEditorView: View {
             NavigationStack {
                 Form {
                     TextField("行き先名", text: $editingTitle)
+                    DatePicker("予定到着時刻", selection: $editingStartTime, displayedComponents: .hourAndMinute)
+                    Stepper("予定滞在時間: \(editingDurationMinutes) (分)", value: $editingDurationMinutes, step: 5)
+                    TextField("メモ", text: $editingMemo)
                 }
                 .navigationTitle("行き先を編集")
                 .toolbar {
@@ -86,7 +92,6 @@ struct ItineraryEditorView: View {
                             editingSpot = nil
                         }
                     }
-
                     ToolbarItem(placement: .confirmationAction) {
                         Button("保存") {
                             updateSpot(spot)
@@ -140,6 +145,9 @@ struct ItineraryEditorView: View {
     private func startEditing(_ spot: Spot) {
         editingSpot = spot
         editingTitle = spot.title
+        editingStartTime = spot.startTime ?? Date.now
+        editingDurationMinutes = spot.durationMinutes ?? 60
+        editingMemo = spot.memo
     }
     
     private func updateSpot(_ spot: Spot) {
@@ -151,12 +159,18 @@ struct ItineraryEditorView: View {
 
         if let index = indexOfCandidate(spot) {
             itinerary.candidateSpots[index].title = title
+            itinerary.candidateSpots[index].startTime = editingStartTime
+            itinerary.candidateSpots[index].durationMinutes = editingDurationMinutes
+            itinerary.candidateSpots[index].memo = editingMemo
             editingSpot = nil
             return
         }
 
         if let index = indexOfConfirmed(spot) {
             itinerary.confirmedSpots[index].title = title
+            itinerary.confirmedSpots[index].startTime = editingStartTime
+            itinerary.confirmedSpots[index].durationMinutes = editingDurationMinutes
+            itinerary.confirmedSpots[index].memo = editingMemo
             editingSpot = nil
             return
         }
