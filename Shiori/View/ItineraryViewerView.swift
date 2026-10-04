@@ -1,41 +1,53 @@
 import SwiftUI
 
+enum ItinerarySpotStatus {
+    case none
+    case current
+    case next
+}
+struct ItineraryRowView: View {
+    let index: Int
+    let spot: Spot
+    let status: ItinerarySpotStatus
+    
+    var body: some View {
+        HStack {
+            Text("\(index + 1)")
+            Text(spot.title)
+            Spacer()
+            if status == .current {
+                Text("現在")
+            }
+            else if status == .next {
+                Text("次")
+            }
+        }
+    }
+}
+
 struct ItineraryViewerView: View {
     let itinerary: Itinerary
 
     var body: some View {
-        List {
-            Section("現在の予定(\(Date.now.formatted(date: .omitted, time: .shortened)) 時点)") {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
                 if let current = currentSpot {
-                    SpotSummaryView(spot: current)
-                } else {
-                    Text("現在の予定はありません")
-                        .foregroundStyle(.secondary)
+                    CurrentSpotCard(spot: current)
                 }
-            }
-
-            Section("次の予定") {
+                
                 if let next = nextSpot {
-                    SpotSummaryView(spot: next)
-                } else {
-                    Text("次の予定はありません")
-                        .foregroundStyle(.secondary)
+                    NextSpotCard(spot: next)
                 }
-            }
-            Section("旅程全体") {
-                ForEach(Array(itinerary.confirmedSpots.enumerated()), id: \.element.id) { index, spot in
-                    HStack {
-                        Text("\(index + 1)")
-                        Text(spot.title)
-                        Spacer()
-                        if let current = currentSpot, current.id == spot.id {
-                            Text("現在")
-                        }
-                        else if let next = nextSpot, next.id == spot.id {
-                            Text("次")
-                        }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("旅程全体")
+                        .font(.title3)
+                    
+                    ForEach(Array(itinerary.confirmedSpots.enumerated()), id: \.element.id) { index, spot in
+                        ItineraryRowView(index: index, spot: spot, status: currentSpot == spot ? .current :
+                                            (nextSpot == spot ? .next : .none))
                     }
                 }
+                .padding()
             }
         }
         .navigationTitle("旅程を見る")

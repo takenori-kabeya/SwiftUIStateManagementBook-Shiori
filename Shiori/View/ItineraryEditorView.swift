@@ -1,5 +1,222 @@
 import SwiftUI
 
+struct CandidateSpotRow: View {
+    let spot: Spot
+    
+    let onAddToItinerary: () -> Void
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+    
+    var body: some View {
+        HStack {
+            Text(spot.title)
+            Spacer()
+            Button("旅程に\n追加") {
+                onAddToItinerary()
+            }
+            Menu {
+                Button("行き先編集") {
+                    onEdit()
+                }
+                Button("削除", role: .destructive) {
+                    onDelete()
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+            }
+        }
+        .padding()
+        .background(.thinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+struct CandidateSpotsView: View {
+    @Binding var newTitle: String
+    
+    let spots: [Spot]
+
+    let onAdd: () -> Void
+    let onAddToItinerary: (Spot) -> Void
+    let onEdit: (Spot) -> Void
+    let onDelete: (Spot) -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("行き先候補")
+                    .font(.title3)
+                Text("(行くかも知れない場所)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                
+                HStack {
+                    TextField("候補名を入力", text: $newTitle)
+                    Button("候補に\n追加") {
+                        onAdd()
+                    }
+                    .disabled(newTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                
+                VStack(spacing: 8) {
+                    ForEach(spots) { spot in
+                        CandidateSpotRow(
+                            spot: spot,
+                            onAddToItinerary: { onAddToItinerary(spot) },
+                            onEdit: { onEdit(spot) },
+                            onDelete: { onDelete(spot) })
+                    }
+                }
+                
+            }
+        }
+    }
+}
+
+struct TimelineMarkerView: View {
+    let index: Int
+    let isLast: Bool
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text("\(index + 1)")
+                .font(.caption)
+                .frame(width: 24, height: 24)
+
+            if !isLast {
+                Rectangle()
+                    .frame(width: 1)
+                    .frame(height: 40)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+struct ItinerarySpotRow: View {
+    let spot: Spot
+    let index: Int
+    let isLast: Bool
+    let isReordering: Bool
+    
+    let onMoveUp: () -> Void
+    let onMoveDown: () -> Void
+    let onReturnToCandidates: () -> Void
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            TimelineMarkerView(index: index, isLast: isLast)
+                .frame(width: 32)
+            
+            VStack(alignment: .leading, spacing: 6) {
+                Text(spot.title)
+                    .font(.headline)
+                
+                Text(spot.stayTimeDisplayText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                
+                if !spot.memo.isEmpty {
+                    Text(spot.memo)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            VStack {
+                Spacer()
+                HStack(alignment: .center) {
+                    Button("候補に\n戻す") {
+                        onReturnToCandidates()
+                    }
+                    
+                    Menu {
+                        Button("行き先編集") {
+                            onEdit()
+                        }
+                        Button("削除", role: .destructive) {
+                            onDelete()
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                    }
+                }
+                Spacer()
+            }
+            
+            if isReordering {
+                VStack {
+                    Spacer()
+                    Button {
+                        onMoveUp()
+                    } label: {
+                        Image(systemName: "arrowtriangle.up.fill")
+                    }
+                    .scaleEffect(x: 2.0, y: 1.0, anchor: .center)
+                    .disabled(index == 0)
+                    
+                    Button {
+                        onMoveDown()
+                    } label: {
+                        Image(systemName: "arrowtriangle.down.fill")
+                    }
+                    .scaleEffect(x: 2.0, y: 1.0, anchor: .center)
+                    .disabled(isLast)
+                    Spacer()
+                }
+            }
+        }
+    }
+}
+
+struct ConfirmedItineraryView: View {
+    let spots: [Spot]
+
+    let onMoveUp: (Spot) -> Void
+    let onMoveDown: (Spot) -> Void
+    let onReturnToCandidate: (Spot) -> Void
+    let onEdit: (Spot) -> Void
+    let onDelete: (Spot) -> Void
+    
+    @State private var isReordering: Bool = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("旅程")
+                        .font(.title3)
+                    Text("(上から順に回る場所・時間)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button(isReordering ? "完了" : "並べ替え") {
+                    withAnimation {
+                        isReordering.toggle()
+                    }
+                }
+            }
+            VStack(spacing: 12) {
+                ForEach(Array(spots.enumerated()), id: \.element.id) { index, spot in
+                    ItinerarySpotRow(
+                        spot: spot,
+                        index: index,
+                        isLast: index == spots.count - 1,
+                        isReordering: isReordering,
+                        onMoveUp: { withAnimation { onMoveUp(spot) } },
+                        onMoveDown: { withAnimation { onMoveDown(spot) } },
+                        onReturnToCandidates: { onReturnToCandidate(spot) },
+                        onEdit: { onEdit(spot) },
+                        onDelete: { onDelete(spot) })
+                }
+            }
+        }
+    }
+}
+
 struct ItineraryEditorView: View {
     @Binding var itinerary: Itinerary
     @State private var newTitle = ""
@@ -7,83 +224,41 @@ struct ItineraryEditorView: View {
     @State var isEditing: Bool = false
 
     @State private var editingSpot: Spot?
-    @State private var editingTitle = ""
-    @State private var editingStartTime = Date()
-    @State private var editingDurationMinutes = 60
-    @State private var editingMemo = ""
+    @State private var editingDraft: SpotDraft = .empty
 
     var body: some View {
-        List {
-            Section("行き先候補") {
-                HStack {
-                    TextField("行き先を入力", text: $newTitle)
-                    Button("候補に追加") {
-                        addCandidate()
-                    }
-                    .buttonStyle(.borderless)
-                    .disabled(newTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-                .alignmentGuide(.listRowSeparatorLeading) { _ in  0 }
-
-                ForEach(itinerary.candidateSpots) { spot in
-                    HStack {
-                        Text(spot.title)
-                        Spacer()
-                        Button("編集") {
-                            startEditing(spot)
-                        }
-                        .buttonStyle(.borderless)
-                        Button("旅程に入れる") {
-                            confirm(spot)
-                        }
-                        .buttonStyle(.borderless)
-                        Button("削除", role: .destructive) {
-                            delete(spot)
-                        }
-                        .buttonStyle(.borderless)
-                        
-                    }
-                }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                CandidateSpotsView(
+                    newTitle: $newTitle,
+                    spots: itinerary.candidateSpots,
+                    onAdd: addCandidate,
+                    onAddToItinerary: confirm,
+                    onEdit: startEditing,
+                    onDelete: delete)
+               ConfirmedItineraryView(
+                    spots: itinerary.confirmedSpots,
+                    onMoveUp: moveConfirmedSpotUp,
+                    onMoveDown: moveConfirmedSpotDown,
+                    onReturnToCandidate: unconfirm,
+                    onEdit: startEditing,
+                    onDelete: delete)
             }
-
-            Section {
-                ForEach(itinerary.confirmedSpots) { spot in
-                    HStack {
-                        Text(spot.title)
-                        Spacer()
-                        Button("編集") {
-                            startEditing(spot)
-                        }
-                        .buttonStyle(.borderless)
-                        Button("候補に戻す") {
-                            unconfirm(spot)
-                        }
-                        .buttonStyle(.borderless)
-                        Button("削除", role: .destructive) {
-                            delete(spot)
-                        }
-                        .buttonStyle(.borderless)
-                    }
-                }
-                .onMove(perform: moveConfirmedSpots)
-            } header: {
-                HStack {
-                    Text("旅程")
-                    Spacer()
-                    CustomEditButton(isEditing: $isEditing)
-                    .buttonStyle(.borderless)
-                }
-            }
+            .padding()
         }
         .navigationTitle("旅程作成")
         .isEditing(isEditing)
         .sheet(item: $editingSpot) { spot in
             NavigationStack {
                 Form {
-                    TextField("行き先名", text: $editingTitle)
-                    DatePicker("予定到着時刻", selection: $editingStartTime, displayedComponents: .hourAndMinute)
-                    Stepper("予定滞在時間: \(editingDurationMinutes) (分)", value: $editingDurationMinutes, step: 5)
-                    TextField("メモ", text: $editingMemo)
+                    TextField("行き先名", text: $editingDraft.title)
+                    Toggle("予定到着時刻を指定する", isOn: $editingDraft.hasStartTime)
+                    DatePicker("予定到着時刻", selection: $editingDraft.startTime, displayedComponents: .hourAndMinute)
+                        .disabled(!editingDraft.hasStartTime)
+                    Toggle("予定滞在時間を指定する", isOn: $editingDraft.hasDurationMinutes)
+                    Stepper("予定滞在時間: \(editingDraft.durationMinutes) (分)", value: $editingDraft.durationMinutes, in: 5...480, step: 5)
+                        .disabled(!editingDraft.hasDurationMinutes)
+                    TextField("メモ", text: $editingDraft.memo)
                 }
                 .navigationTitle("行き先を編集")
                 .toolbar {
@@ -144,40 +319,46 @@ struct ItineraryEditorView: View {
 
     private func startEditing(_ spot: Spot) {
         editingSpot = spot
-        editingTitle = spot.title
-        editingStartTime = spot.startTime ?? Date.now
-        editingDurationMinutes = spot.durationMinutes ?? 60
-        editingMemo = spot.memo
+        editingDraft = SpotDraft(spot: spot)
     }
     
     private func updateSpot(_ spot: Spot) {
-        let title = editingTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = editingDraft.title.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !title.isEmpty else {
             return
         }
 
         if let index = indexOfCandidate(spot) {
-            itinerary.candidateSpots[index].title = title
-            itinerary.candidateSpots[index].startTime = editingStartTime
-            itinerary.candidateSpots[index].durationMinutes = editingDurationMinutes
-            itinerary.candidateSpots[index].memo = editingMemo
+            let spot = editingDraft.spot()
+            itinerary.candidateSpots[index] = spot
             editingSpot = nil
             return
         }
 
         if let index = indexOfConfirmed(spot) {
-            itinerary.confirmedSpots[index].title = title
-            itinerary.confirmedSpots[index].startTime = editingStartTime
-            itinerary.confirmedSpots[index].durationMinutes = editingDurationMinutes
-            itinerary.confirmedSpots[index].memo = editingMemo
+            let spot = editingDraft.spot()
+            itinerary.confirmedSpots[index] = spot
             editingSpot = nil
             return
         }
     }
 
-    private func moveConfirmedSpots(from source: IndexSet, to spot: Int) {
-        itinerary.confirmedSpots.move(fromOffsets: source, toOffset: spot)
+    private func moveConfirmedSpotUp(_ spot: Spot) {
+        guard let index = indexOfConfirmed(spot), 0 < index else {
+            return
+        }
+
+        itinerary.confirmedSpots.swapAt(index, index - 1)
+    }
+
+    private func moveConfirmedSpotDown(_ spot: Spot) {
+        guard let index = indexOfConfirmed(spot),
+              index < itinerary.confirmedSpots.count - 1 else {
+            return
+        }
+
+        itinerary.confirmedSpots.swapAt(index, index + 1)
     }
 
     private func indexOfCandidate(_ spot: Spot) -> Int? {
