@@ -10,11 +10,7 @@ struct TripListView: View {
     @State private var editingStartDate: Date = Date.now.date
     @State private var editingDayCount: Int = 1
     
-    @State private var hasLoaded: Bool = false
-    
     @State var isEditing: Bool = false
-
-    let tripPersistence: TripPersistence
 
     var body: some View {
         NavigationStack {
@@ -30,24 +26,24 @@ struct TripListView: View {
                     }
                     .alignmentGuide(.listRowSeparatorLeading) { _ in  0 }
 
-                    ForEach(store.scope(state: \.trips, action: \.trips)) { childStore in
+                    ForEach(store.scope(state: \.trips, action: \.trips)) { tripStore in
                         if (isEditing) {
                             HStack {
-                                Text(childStore.info.title)
+                                Text(tripStore.info.title)
                                 Spacer()
                                 Button("編集") {
-                                    startEditing(childStore.state.makeTrip())
+                                    startEditing(tripStore.state.makeTrip())
                                 }
                                 .buttonStyle(.borderless)
                                 Button("削除", role: .destructive) {
-                                    delete(childStore.info.id)
+                                    delete(tripStore.info.id)
                                 }
                                 .buttonStyle(.borderless)
                             }
                         }
                         else {
-                            NavigationLink(childStore.info.title) {
-                                TripDetailView(store: childStore)
+                            NavigationLink(tripStore.info.title) {
+                                TripDetailView(store: tripStore)
                             }
                         }
                     }
@@ -62,22 +58,7 @@ struct TripListView: View {
             }
             .navigationTitle("旅行一覧")
             .task {
-                guard !hasLoaded else { return }
-                
-                do {
-                    let trips = try await tripPersistence.load()
-                    store.send(.setTrips(trips))
-                    hasLoaded = true
-                }
-                catch {
-                    print("読み込み失敗:", error)
-                }
-            }
-            .onDisappear {
-                Task {
-                    let trips = store.trips.elements.map { $0.makeTrip() }
-                    try? await tripPersistence.save(trips)
-                }
+                store.send(.load)
             }
             .isEditing(isEditing)
             .sheet(item: $editingTrip) { trip in
@@ -160,5 +141,5 @@ struct TripListView: View {
 #Preview {
     TripListView(store: Store(initialState: TripsFeature.State()) {
         TripsFeature()
-    }, tripPersistence: .mock)
+    })
 }

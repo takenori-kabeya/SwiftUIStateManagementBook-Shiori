@@ -27,6 +27,6 @@ struct NextSpotCard: View {
 }
 
 #Preview {
-    @Previewable var spot: Spot = TripPersistence.defaultTrip.itinerary.itineraryDays.first!.spots.first!
+    @Previewable var spot: Spot = TripPersistenceClient.defaultTrip.itinerary.itineraryDays.first!.spots.first!
     NextSpotCard(spot: spot)
 }

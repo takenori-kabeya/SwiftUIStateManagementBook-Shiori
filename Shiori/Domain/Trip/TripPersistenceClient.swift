@@ -1,13 +1,15 @@
 import Foundation
+import ComposableArchitecture
 
 /// 旅行の永続化
-nonisolated struct TripPersistence {
-    var load: () async throws -> [Trip]
-    var save: ([Trip]) async throws -> Void
+@DependencyClient
+nonisolated struct TripPersistenceClient: Sendable {
+    var load: @Sendable () async throws -> [Trip]
+    var save: @Sendable ([Trip]) async throws -> Void
 }
 
-extension TripPersistence {
-    static let local = TripPersistence(
+nonisolated extension TripPersistenceClient: DependencyKey {
+    static let liveValue = Self(
         load: {
             let url = Self.fileURL
 
@@ -21,17 +23,18 @@ extension TripPersistence {
         save: { trips in
             let data = try JSONEncoder().encode(trips)
             try data.write(to: Self.fileURL, options: [.atomic])
+            print("save!")
         }
     )
 
-    static let mock = TripPersistence(
+    static let mock = Self(
         load: { [defaultTrip] },
         save: { trips in
             print("保存:", trips)
         }
     )
     
-    static let uiTest = TripPersistence(
+    static let uiTest = Self(
         load: { [uiTestTrip] },
         save: { _ in }
     )
@@ -76,5 +79,12 @@ extension TripPersistence {
     nonisolated private static var fileURL: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("itinerary.json")
+    }
+}
+
+extension DependencyValues {
+    nonisolated var tripPersistence: TripPersistenceClient {
+        get { self[TripPersistenceClient.self] }
+        set { self[TripPersistenceClient.self] = newValue }
     }
 }

@@ -19,7 +19,7 @@ struct TripDetailView: View {
 }
 
 #Preview {
-    @Previewable @State var trip = TripPersistence.defaultTrip
+    @Previewable @State var trip = TripPersistenceClient.defaultTrip
     
     NavigationStack {
         TripDetailView(store: Store(initialState: TripFeature.State(trip: trip)) {
