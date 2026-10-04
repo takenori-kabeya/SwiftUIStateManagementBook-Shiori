@@ -18,6 +18,7 @@ struct TripsFeature {
         case addTrip(Trip)
         case deleteTrip(Trip.ID)
         case updateTrip(Trip)
+        case tripUpdated
         case load
         case tripsLoaded([Trip])
         case loadFailed
@@ -31,20 +32,23 @@ struct TripsFeature {
         
         Reduce { state, action in
             switch (action) {
+            case .trips(.element(_, action: .delegate(.tripUpdated))):
+                return .send(.tripUpdated)
             case .trips:
-                // TODO: ItineraryFeature/TripFeatureのActionに更新処理以外が入ったら見直し
-                return .send(.save)
+                return .none
             case let .addTrip(trip):
                 let tripState = TripFeature.State(trip: trip)
                 state.trips.append(tripState)
-                return .send(.save)
+                return .send(.tripUpdated)
             case let .deleteTrip(id):
                 state.trips.remove(id: id)
-                return .send(.save)
+                return .send(.tripUpdated)
             case let .updateTrip(trip):
                 if let index = state.trips.index(id: trip.id) {
                     state.trips[index] = TripFeature.State(trip: trip)
                 }
+                return .send(.tripUpdated)
+            case .tripUpdated:
                 return .send(.save)
             case .load:
                 guard !state.hasLoaded else { return .none }
@@ -84,15 +88,8 @@ struct TripsFeature {
                 // TODO: 現段階ではエラー表示などを省略しているが後で追加する
                 return .none
                 
-            case let .editTrip(.presented(.delegate(.saveRequested(draft)))):
-                guard var tripState = state.trips[id: draft.id] else {
-                    return .none
-                }
-                tripState.info = draft.info
-                tripState.itinerary.itinerary.setDayCount(draft.newNumDays)
-                state.trips[id: draft.id] = tripState
-                return .send(.save)
-                
+            case .editTrip(.presented(.delegate(.saveRequested(let draft)))):
+                return .send(.trips(.element(id: draft.id, action: .tripUpdateRequested(draft))))                
             case .editTrip:
                 return .none
                 

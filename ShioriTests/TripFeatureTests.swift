@@ -81,6 +81,9 @@ struct TripFeatureTests {
         await store.send(.itinerary(.addCandidateButtonTapped(title: spotTitle))) {
             $0.itinerary.itinerary.candidateSpots.append(Spot(id: spotID, title: spotTitle))
         }
+        
+        await store.receive(\.itinerary.delegate.itineraryUpdated)
+        await store.receive(\.delegate.tripUpdated)
 
         #expect(store.state.itinerary.itinerary.candidateSpots.map(\.title) == [spotTitle])
         #expect(store.state.info == trip.info)
@@ -110,5 +113,9 @@ struct TripFeatureTests {
         await store.send(.itinerary(.autoShiftButtonTapped(dayID: dayID))) {
             $0.itinerary.itinerary.itineraryDays[0].spots[1].startTime = SpotTime(hour: 11, minute: 30)
         }
+        
+        await store.receive(\.itinerary.delegate.itineraryUpdated)
+        await store.receive(\.delegate.tripUpdated)
+        
     }
 }

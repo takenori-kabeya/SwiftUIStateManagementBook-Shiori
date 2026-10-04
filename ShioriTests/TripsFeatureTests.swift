@@ -44,6 +44,7 @@ struct TripsFeatureTests {
         await store.send(.addTrip(trip)) {
             $0.trips = [TripFeature.State(trip: trip)]
         }
+        await store.receive(\.tripUpdated)
         await store.receive(\.save)
         await store.receive(\.saveCompleted)
     }
@@ -69,6 +70,7 @@ struct TripsFeatureTests {
         await store.send(.deleteTrip(tripAID)) {
             $0.trips = [TripFeature.State(trip: tripB)]
         }
+        await store.receive(\.tripUpdated)
         await store.receive(\.save)
         await store.receive(\.saveCompleted)
     }
@@ -84,6 +86,7 @@ struct TripsFeatureTests {
         }
 
         await store.send(.deleteTrip(uuid()))
+        await store.receive(\.tripUpdated)
         await store.receive(\.save)
         await store.receive(\.saveCompleted)
     }
@@ -110,6 +113,7 @@ struct TripsFeatureTests {
         await store.send(.updateTrip(updated)) {
             $0.trips = [TripFeature.State(trip: updated)]
         }
+        await store.receive(\.tripUpdated)
         await store.receive(\.save)
         await store.receive(\.saveCompleted)
     }
@@ -126,6 +130,7 @@ struct TripsFeatureTests {
         }
 
         await store.send(.updateTrip(unknown))
+        await store.receive(\.tripUpdated)
         await store.receive(\.save)
         await store.receive(\.saveCompleted)
     }
@@ -181,6 +186,9 @@ struct TripsFeatureTests {
         ) {
             $0.trips[id: tripID]?.itinerary.itinerary.candidateSpots.append(makeSpot(id: implicitSpotID, title: spotTitle))
         }
+        await store.receive(\.trips[id: tripID].itinerary.delegate.itineraryUpdated)
+        await store.receive(\.trips[id: tripID].delegate.tripUpdated)
+        await store.receive(\.tripUpdated)
         await store.receive(\.save)
         await store.receive(\.saveCompleted)
 
@@ -240,9 +248,12 @@ struct TripsFeatureTests {
         saved.info.title = "新"
 
         await store.send(.editTrip(.presented(.saveButtonTapped)))
-        await store.receive(\.editTrip.presented.delegate.saveRequested) {
+        await store.receive(\.editTrip.presented.delegate.saveRequested)
+        await store.receive(\.trips[id: tripID].tripUpdateRequested) {
             $0.trips[id: tripID]?.info = saved.info
         }
+        await store.receive(\.trips[id: tripID].delegate.tripUpdated)
+        await store.receive(\.tripUpdated)
         await store.receive(\.save)
         await store.receive(\.editTrip.dismiss) {
             $0.editTrip = nil

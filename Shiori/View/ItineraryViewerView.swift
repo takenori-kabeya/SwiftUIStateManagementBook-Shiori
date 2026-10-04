@@ -1,4 +1,5 @@
 import SwiftUI
+import ComposableArchitecture
 
 enum ItinerarySpotStatus {
     case none
@@ -7,17 +8,18 @@ enum ItinerarySpotStatus {
 }
 
 struct ItineraryViewerView: View {
-    let itinerary: Itinerary
+    @Bindable var store: StoreOf<ItineraryFeature>
+    var weatherForecastStore: StoreOf<WeatherForecastFeature>
     let tripStartDate: Date
 
     private var misalignedSpotIDs: Set<UUID> {
-        itinerary.itineraryDays.reduce(into: Set<UUID>()) { result, day in
+        store.itinerary.itineraryDays.reduce(into: Set<UUID>()) { result, day in
             result.formUnion(ItineraryScheduleChecker.misalignedSpotIDs(in: day.spots))
         }
     }
 
     private var conflictingSpotIDs: Set<UUID> {
-        itinerary.itineraryDays.reduce(into: Set<UUID>()) { result, day in
+        store.itinerary.itineraryDays.reduce(into: Set<UUID>()) { result, day in
             result.formUnion(ItineraryScheduleChecker.conflictingSpotIDs(in: day.spots))
         }
     }
@@ -26,13 +28,19 @@ struct ItineraryViewerView: View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
             content(now: context.date)
         }
+        .refreshable {
+            await weatherForecastStore.send(.refreshRequested).finish()
+        }
+        .onDisappear {
+            weatherForecastStore.send(.viewDisappeared)
+        }
         .navigationTitle("旅程を見る")
     }
 
     @ViewBuilder
     private func content(now: Date) -> some View {
         let highlight = ItineraryCurrentNextResolver.highlight(
-            in: itinerary,
+            in: store.itinerary,
             tripStartDate: tripStartDate,
             now: now
         )
@@ -40,6 +48,13 @@ struct ItineraryViewerView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 highlightCards(highlight)
+                
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("天気予報")
+                        .font(.headline)
+                    WeatherForecastView(store: weatherForecastStore)
+                }
+                .padding(.leading, 16)
 
                 VStack(alignment: .leading, spacing: 12) {
                     Text("旅程全体")
@@ -57,11 +72,11 @@ struct ItineraryViewerView: View {
                     }
 
                     VStack(spacing: 12) {
-                        let dayOffsets: [Int] = itinerary.itineraryDays.indices.map { dayIndex in
-                            itinerary.itineraryDays[..<dayIndex].reduce(0) { $0 + $1.spots.count }
+                        let dayOffsets: [Int] = store.itinerary.itineraryDays.indices.map { dayIndex in
+                            store.itinerary.itineraryDays[..<dayIndex].reduce(0) { $0 + $1.spots.count }
                         }
 
-                        ForEach(Array(itinerary.itineraryDays.enumerated()), id: \.offset) { dayIndex, day in
+                        ForEach(Array(store.itinerary.itineraryDays.enumerated()), id: \.offset) { dayIndex, day in
                             VStack(alignment: .leading, spacing: 12) {
                                 Text(dayTitle(dayIndex))
                                     .font(.subheadline)
@@ -186,8 +201,24 @@ struct ItineraryViewerView: View {
 
 #Preview {
     @Previewable @State var trip = Trip.previewTrip
+    @Previewable @State var place = Trip.previewTrip.info.weatherPlace!
     
     NavigationStack {
-        ItineraryViewerView(itinerary: trip.itinerary, tripStartDate: trip.info.startDate)
+        ItineraryViewerView(
+            store: Store(initialState: ItineraryFeature.State(itinerary: trip.itinerary)) {
+                ItineraryFeature()
+            },
+            weatherForecastStore: Store(initialState: WeatherForecastFeature.State(
+                forecastCondition: ForecastCondition(
+                    latitude: place.latitude,
+                    longitude: place.longitude,
+                    fromDate: trip.info.startDate,
+                    numDays: trip.itinerary.itineraryDays.count
+                )
+            )) {
+                WeatherForecastFeature()
+            },
+            tripStartDate: trip.info.startDate
+        )
     }
 }

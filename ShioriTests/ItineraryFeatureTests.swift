@@ -58,6 +58,7 @@ struct ItineraryFeatureTests {
         await store.send(.autoShiftButtonTapped(dayID: day1ID)) {
             $0.itinerary.itineraryDays[0].spots[1].startTime = SpotTime(hour: 11, minute: 30)
         }
+        await store.receive(\.delegate.itineraryUpdated)
     }
     @Test func 未知の日IDのときは何もしないこと() async {
         let dayID = uuid()
@@ -78,6 +79,7 @@ struct ItineraryFeatureTests {
         }
 
         await store.send(.autoShiftButtonTapped(dayID: uuid()))
+        await store.receive(\.delegate.itineraryUpdated)
     }
 
     @Test func 候補追加でタイトルを候補へ追加すること() async {
@@ -94,6 +96,7 @@ struct ItineraryFeatureTests {
         await store.send(.addCandidateButtonTapped(title: newTitle)) {
             $0.itinerary.candidateSpots.append(makeSpot(id: implicitSpotID, title: newTitle))
         }
+        await store.receive(\.delegate.itineraryUpdated)
         #expect(store.state.itinerary.candidateSpots.map(\.title) == ["新候補"])
         #expect(store.state.itinerary.candidateSpots.count == 1)
         #expect(store.state.itinerary.candidateSpots[0].memo == "")
@@ -130,6 +133,7 @@ struct ItineraryFeatureTests {
             $0.itinerary.itineraryDays[1].spots = [candidate]
             $0.daySelection = nil
         }
+        await store.receive(\.delegate.itineraryUpdated)
     }
     
     @Test func 日選択を閉じると候補は追加せず選択状態だけクリアすること() async {
@@ -191,6 +195,7 @@ struct ItineraryFeatureTests {
             $0.itinerary.itineraryDays[0].spots = []
             $0.itinerary.candidateSpots = [spot]
         }
+        await store.receive(\.delegate.itineraryUpdated)
     }
     @Test func 上へ移動で前の行き先と入れ替えること() async {
         let spotAID = uuid()
@@ -213,6 +218,7 @@ struct ItineraryFeatureTests {
         await store.send(.moveUpButtonTapped(spotID: spotBID)) {
             $0.itinerary.itineraryDays[0].spots = [spotB, spotA]
         }
+        await store.receive(\.delegate.itineraryUpdated)
     }
 
     @Test func 下へ移動で次の行き先と入れ替えること() async {
@@ -236,6 +242,7 @@ struct ItineraryFeatureTests {
         await store.send(.moveDownButtonTapped(spotID: spotAID)) {
             $0.itinerary.itineraryDays[0].spots = [spotB, spotA]
         }
+        await store.receive(\.delegate.itineraryUpdated)
     }
 
     @Test func 前日へ移動で前日の末尾へ追加すること() async {
@@ -260,6 +267,7 @@ struct ItineraryFeatureTests {
             $0.itinerary.itineraryDays[0].spots = [spotA, spotB]
             $0.itinerary.itineraryDays[1].spots = []
         }
+        await store.receive(\.delegate.itineraryUpdated)
     }
 
     @Test func 翌日へ移動で翌日の末尾へ追加すること() async {
@@ -284,6 +292,7 @@ struct ItineraryFeatureTests {
             $0.itinerary.itineraryDays[0].spots = []
             $0.itinerary.itineraryDays[1].spots = [spotB, spotA]
         }
+        await store.receive(\.delegate.itineraryUpdated)
     }
 
     @Test func 削除ボタンで削除確認待ちになり行き先はまだ取り除かないこと() async {
@@ -324,6 +333,7 @@ struct ItineraryFeatureTests {
             $0.itinerary.itineraryDays[0].spots = []
             $0.spotPendingDeletion = nil
         }
+        await store.receive(\.delegate.itineraryUpdated)
     }
 
     @Test func 削除確認を閉じると旅程は変えず確認待ちだけクリアすること() async {
@@ -375,6 +385,7 @@ struct ItineraryFeatureTests {
         await store.receive(\.editSpot.delegate.presented.saveRequested) {
             $0.itinerary.candidateSpots = [expectedDraft.spot()]
         }
+        await store.receive(\.delegate.itineraryUpdated)
         await store.receive(\.editSpot.dismiss) {
             $0.editSpot = nil
         }
@@ -446,6 +457,7 @@ struct ItineraryFeatureTests {
                 fromSpotID: spotBID
             )
         }
+        await store.receive(\.delegate.itineraryUpdated)
         await store.receive(\.editSpot.dismiss) {
             $0.editSpot = nil
         }
@@ -478,6 +490,7 @@ struct ItineraryFeatureTests {
             $0.itinerary.itineraryDays[0].spots[1].startTime = SpotTime(hour: 11, minute: 30)
             $0.scheduleShiftPending = nil
         }
+        await store.receive(\.delegate.itineraryUpdated)
     }
 
     @Test func ずらし確認を閉じるとずらさず確認待ちだけクリアすること() async {
@@ -504,7 +517,7 @@ struct ItineraryFeatureTests {
         await store.send(.scheduleShiftDismissed) {
             $0.scheduleShiftPending = nil
         }
-
+        
         #expect(store.state.itinerary.itineraryDays[0].spots[0].durationMinutes == 90)
         #expect(store.state.itinerary.itineraryDays[0].spots[1].startTime == SpotTime(hour: 11, minute: 0))
     }
@@ -538,6 +551,7 @@ struct ItineraryFeatureTests {
         await store.receive(\.editSpot.presented.delegate.saveRequested) {
             $0.itinerary.itineraryDays[0].spots[0] = expectedDraft.spot()
         }
+        await store.receive(\.delegate.itineraryUpdated)
         await store.receive(\.editSpot.dismiss) {
             $0.editSpot = nil
         }
@@ -574,6 +588,7 @@ struct ItineraryFeatureTests {
         await store.receive(\.editSpot.presented.delegate.saveRequested) {
             $0.itinerary.itineraryDays[0].spots[0] = expectedDraft.spot()
         }
+        await store.receive(\.delegate.itineraryUpdated)
         await store.receive(\.editSpot.dismiss) {
             $0.editSpot = nil
         }
@@ -609,6 +624,7 @@ struct ItineraryFeatureTests {
         await store.receive(\.editSpot.presented.delegate.saveRequested) {
             $0.itinerary.itineraryDays[0].spots[0] = expectedDraft.spot()
         }
+        await store.receive(\.delegate.itineraryUpdated)
         await store.receive(\.editSpot.dismiss) {
             $0.editSpot = nil
         }
@@ -645,6 +661,7 @@ struct ItineraryFeatureTests {
         await store.receive(\.editSpot.presented.delegate.saveRequested) {
             $0.itinerary.itineraryDays[0].spots[0] = expectedDraft.spot()
         }
+        await store.receive(\.delegate.itineraryUpdated)
         await store.receive(\.editSpot.dismiss) {
             $0.editSpot = nil
         }
@@ -684,6 +701,7 @@ struct ItineraryFeatureTests {
         await store.receive(\.editSpot.presented.delegate.saveRequested) {
             $0.itinerary.itineraryDays[0].spots[1] = expectedDraft.spot()
         }
+        await store.receive(\.delegate.itineraryUpdated)
         await store.receive(\.editSpot.dismiss) {
             $0.editSpot = nil
         }
@@ -738,6 +756,7 @@ struct ItineraryFeatureTests {
                 fromSpotID: spotBID
             )
         }
+        await store.receive(\.delegate.itineraryUpdated)
         await store.receive(\.editSpot.dismiss) {
             $0.editSpot = nil
         }
@@ -775,6 +794,7 @@ struct ItineraryFeatureTests {
             $0.itinerary.itineraryDays[0].spots[2].startTime = SpotTime(hour: 12, minute: 30)
             $0.scheduleShiftPending = nil
         }
+        await store.receive(\.delegate.itineraryUpdated)
 
         #expect(store.state.itinerary.itineraryDays[0].spots[0].startTime == SpotTime(hour: 10, minute: 0))
         #expect(store.state.itinerary.itineraryDays[0].spots[0].durationMinutes == 90)

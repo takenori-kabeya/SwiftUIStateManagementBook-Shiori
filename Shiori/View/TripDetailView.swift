@@ -11,7 +11,11 @@ struct TripDetailView: View {
             }
             
             NavigationLink("旅程を見る") {
-                ItineraryViewerView(itinerary: store.itinerary.itinerary, tripStartDate: store.info.startDate)
+                ItineraryViewerView(
+                    store: store.scope(state: \.itinerary, action: \.itinerary),
+                    weatherForecastStore: store.scope(state: \.weatherForecast, action: \.weatherForecast),
+                    tripStartDate: store.info.startDate
+                )
             }
         }
         .navigationTitle(store.info.title)

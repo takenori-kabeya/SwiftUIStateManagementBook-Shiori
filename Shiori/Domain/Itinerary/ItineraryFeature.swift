@@ -39,6 +39,12 @@ struct ItineraryFeature {
         case scheduleShiftDismissed
         case daySelected(dayID: ItineraryDay.ID)
         case daySelectionDismissed
+
+        case delegate(Delegate)
+        @CasePathable
+        enum Delegate: Equatable {
+            case itineraryUpdated
+        }
     }
 
     var body: some Reducer<State, Action> {
@@ -46,27 +52,26 @@ struct ItineraryFeature {
             switch action {
             case let .addCandidateButtonTapped(title):
                 state.itinerary.addCandidate(title: title)
-                return .none
+                return .send(.delegate(.itineraryUpdated))
             case let .confirmButtonTapped(spot):
                 state.daySelection = DaySelectionState(spot: spot)
                 return .none
             case let .returnToCandidateButtonTapped(spotID):
                 state.itinerary.returnSpotToCandidates(spotID: spotID)
-                return .none
+                return .send(.delegate(.itineraryUpdated))
             case let .moveUpButtonTapped(spotID):
                 state.itinerary.moveConfirmedSpotUp(spotID: spotID)
-                return .none
+                return .send(.delegate(.itineraryUpdated))
             case let .moveDownButtonTapped(spotID):
                 state.itinerary.moveConfirmedSpotDown(spotID: spotID)
-                return .none
+                return .send(.delegate(.itineraryUpdated))
             case let .moveToPreviousDayButtonTapped(spotID):
                 state.itinerary.moveSpotToPreviousDay(spotID: spotID)
-                return .none
+                return .send(.delegate(.itineraryUpdated))
             case let .moveToNextDayButtonTapped(spotID):
                 state.itinerary.moveSpotToNextDay(spotID: spotID)
-                return .none
+                return .send(.delegate(.itineraryUpdated))
             case let .deleteButtonTapped(spotID):
-                //state.itinerary.deleteSpot(spotID: spotID)
                 state.spotPendingDeletion = spotID
                 return .none
             case .deleteConfirmed:
@@ -75,21 +80,21 @@ struct ItineraryFeature {
                 }
                 state.itinerary.deleteSpot(spotID: spotID)
                 state.spotPendingDeletion = nil
-                return .none
+                return .send(.delegate(.itineraryUpdated))
             case .deleteConfirmationDismissed:
                 state.spotPendingDeletion = nil
                 return .none
             case let .autoShiftButtonTapped(dayID):
                 // 指定日の後続予定をずらす
                 state.itinerary.resolveScheduleConflicts(dayID: dayID)
-                return .none
+                return .send(.delegate(.itineraryUpdated))
             case .scheduleShiftConfirmed:
                 guard let pending = state.scheduleShiftPending else {
                     return .none
                 }
                 state.itinerary.resolveScheduleConflicts(dayID: pending.dayID, fromSpotID: pending.fromSpotID)
                 state.scheduleShiftPending = nil
-                return .none
+                return .send(.delegate(.itineraryUpdated))
             case .scheduleShiftDismissed:
                 state.scheduleShiftPending = nil
                 return .none
@@ -104,7 +109,7 @@ struct ItineraryFeature {
                     previous: previous,
                     updated: updated
                 )
-                return .none
+                return .send(.delegate(.itineraryUpdated))
             case .editSpot(.dismiss):
                 // 特に何もしない
                 return .none
@@ -119,9 +124,11 @@ struct ItineraryFeature {
                 }
                 state.itinerary.confirmCandidate(spotID: spot.id, toDayID: dayID)
                 state.daySelection = nil
-                return .none
+                return .send(.delegate(.itineraryUpdated))
             case .daySelectionDismissed:
                 state.daySelection = nil
+                return .none
+            case .delegate:
                 return .none
             }
         }
