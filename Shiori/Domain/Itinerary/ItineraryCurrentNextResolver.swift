@@ -1,6 +1,74 @@
 import Foundation
 
 nonisolated enum ItineraryCurrentNextResolver {
+    enum CurrentSchedule: Equatable {
+        /// 非表示
+        case hidden
+        /// 移動中
+        case moving
+        /// 予定終了
+        case scheduleFinished
+        /// 現在の予定
+        case spot(Spot)
+    }
+    
+    enum NextSchedule: Equatable {
+        /// 予定なし
+        case noneRegistered
+        /// 予定終了
+        case scheduleFinished
+        /// 次の予定
+        case spot(Spot)
+        /// 最初の予定
+        case firstSpot(Spot)
+    }
+    
+    struct TripSpotHighlight: Equatable {
+        var current: CurrentSchedule
+        var next: NextSchedule
+    }
+
+    // MARK: - Multi-day API (Itinerary + tripStartDate)
+
+    static func highlight(
+        in itinerary: Itinerary,
+        tripStartDate: Date,
+        now: Date = .now
+    ) -> TripSpotHighlight {
+        let dayIndex = rawDayIndex(tripStartDate: tripStartDate, now: now)
+
+        // 旅行開始日前日以前
+        if dayIndex < 0 {
+            if let first = firstConfirmedSpot(in: itinerary) {
+                return TripSpotHighlight(current: .hidden, next: .firstSpot(first))
+            }
+            return TripSpotHighlight(current: .hidden, next: .noneRegistered)
+        }
+
+        // 旅行終了日翌日以降
+        if itinerary.itineraryDays.count <= dayIndex {
+            return TripSpotHighlight(current: .hidden, next: .scheduleFinished)
+        }
+
+        // 旅行中
+        if let current = currentSpot(in: itinerary, tripStartDate: tripStartDate, now: now) {
+            if let next = nextSpotInGlobalOrder(after: current, in: itinerary) {
+                return TripSpotHighlight(current: .spot(current), next: .spot(next))
+            }
+            return TripSpotHighlight(current: .spot(current), next: .scheduleFinished)
+        }
+
+        if let next = earliestFutureTimedSpot(
+            in: itinerary,
+            tripStartDate: tripStartDate,
+            now: now
+        ) {
+            return TripSpotHighlight(current: .moving, next: .spot(next))
+        }
+
+        return TripSpotHighlight(current: .scheduleFinished, next: .scheduleFinished)
+    }
+
     static func currentSpot(
         in itinerary: Itinerary,
         tripStartDate: Date,
@@ -10,74 +78,83 @@ nonisolated enum ItineraryCurrentNextResolver {
         guard 0 <= dayIndex, dayIndex < itinerary.itineraryDays.count else { return nil }
 
         let nowTime = SpotTime.fromDate(now)
-        return itinerary.itineraryDays[dayIndex].spots.first { spot in
+        return itinerary.itineraryDays[dayIndex].spots.last { spot in
             isCurrentlyAt(spot, at: nowTime)
         }
     }
 
-    static func nextSpot(
-        in itinerary: Itinerary,
-        tripStartDate: Date,
-        now: Date = .now
-    ) -> Spot? {
-        let rawDayIndex = self.rawDayIndex(tripStartDate: tripStartDate, now: now)
+    // MARK: - Shared helpers
 
-        guard rawDayIndex < itinerary.itineraryDays.count else {
+    private static func firstConfirmedSpot(in itinerary: Itinerary) -> Spot? {
+        for day in itinerary.itineraryDays {
+            if let first = day.spots.first {
+                return first
+            }
+        }
         return nil
-        }
+    }
 
-        let nowTime = SpotTime.fromDate(now)
-        let nowMinutes = minutesSinceMidnight(from: nowTime)
-
-        let spotContexts: [(dayIndex: Int, globalIndex: Int, spot: Spot)] = {
-            var result: [(Int, Int, Spot)] = []
-            var globalIndex = 0
-            for (dayIndex, day) in itinerary.itineraryDays.enumerated() {
-                for spot in day.spots {
-                    result.append((dayIndex, globalIndex, spot))
-                    globalIndex += 1
-                }
-            }
-            return result.map { (dayIndex: $0.0, globalIndex: $0.1, spot: $0.2) }
-        }()
-
-        if let current = currentSpot(in: itinerary, tripStartDate: tripStartDate, now: now),
-           let currentContext = spotContexts.first(where: { $0.spot.id == current.id }) {
-            let nextIndex = currentContext.globalIndex + 1
-            return spotContexts.first(where: { $0.globalIndex == nextIndex })?.spot
-        }
-
-        if let futureTimed = spotContexts.first(where: { ctx in
-            guard let startTime = ctx.spot.startTime else { return false }
-            let startMinutes = minutesSinceMidnight(from: startTime)
-            if ctx.dayIndex > rawDayIndex { return true }
-            if ctx.dayIndex == rawDayIndex { return nowMinutes < startMinutes }
-            return false
-        }) {
-            return futureTimed.spot
-        }
-
-        var lastCompletedGlobalIndex: Int?
-        for ctx in spotContexts {
-            guard let startTime = ctx.spot.startTime,
-                  let durationMinutes = ctx.spot.durationMinutes else { continue }
-
-            let endMinutes = minutesSinceMidnight(from: startTime) + durationMinutes
-
-            if ctx.dayIndex < rawDayIndex {
-                lastCompletedGlobalIndex = ctx.globalIndex
-            } else if ctx.dayIndex == rawDayIndex {
-                if endMinutes <= nowMinutes {
-                    lastCompletedGlobalIndex = ctx.globalIndex
-                }
+    private static func spotContexts(
+        in itinerary: Itinerary
+    ) -> [(dayIndex: Int, globalIndex: Int, spot: Spot)] {
+        var result: [(dayIndex: Int, globalIndex: Int, spot: Spot)] = []
+        var globalIndex = 0
+        for (dayIndex, day) in itinerary.itineraryDays.enumerated() {
+            for spot in day.spots {
+                result.append((dayIndex: dayIndex, globalIndex: globalIndex, spot: spot))
+                globalIndex += 1
             }
         }
+        return result
+    }
 
-        guard let lastCompletedGlobalIndex,
-              lastCompletedGlobalIndex + 1 < spotContexts.count else {
+    private static func nextSpotInGlobalOrder(after current: Spot, in itinerary: Itinerary) -> Spot? {
+        let contexts = spotContexts(in: itinerary)
+        guard let currentContext = contexts.first(where: { $0.spot.id == current.id }) else {
             return nil
         }
-        return spotContexts.first(where: { $0.globalIndex == lastCompletedGlobalIndex + 1 })?.spot
+        return contexts.first(where: { $0.globalIndex == currentContext.globalIndex + 1 })?.spot
+    }
+
+    private static func earliestFutureTimedSpot(
+        in itinerary: Itinerary,
+        tripStartDate: Date,
+        now: Date
+    ) -> Spot? {
+        var best: (spot: Spot, date: Date)?
+        for (dayIndex, day) in itinerary.itineraryDays.enumerated() {
+            for spot in day.spots {
+                guard let startTime = spot.startTime,
+                      let absolute = absoluteStartDate(
+                        tripStartDate: tripStartDate,
+                        dayIndex: dayIndex,
+                        startTime: startTime
+                      ),
+                      absolute >= now else {
+                    continue
+                }
+                if best == nil || absolute < best!.date {
+                    best = (spot, absolute)
+                }
+            }
+        }
+        return best?.spot
+    }
+
+    private static func absoluteStartDate(
+        tripStartDate: Date,
+        dayIndex: Int,
+        startTime: SpotTime,
+        calendar: Calendar = .current
+    ) -> Date? {
+        let startOfTrip = calendar.startOfDay(for: tripStartDate)
+        guard let day = calendar.date(byAdding: .day, value: dayIndex, to: startOfTrip) else {
+            return nil
+        }
+        var components = calendar.dateComponents([.year, .month, .day], from: day)
+        components.hour = startTime.hour
+        components.minute = startTime.minute
+        return calendar.date(from: components)
     }
 
     private static func isCurrentlyAt(_ spot: Spot, at now: SpotTime) -> Bool {

@@ -31,23 +31,15 @@ struct ItineraryViewerView: View {
 
     @ViewBuilder
     private func content(now: Date) -> some View {
+        let highlight = ItineraryCurrentNextResolver.highlight(
+            in: itinerary,
+            tripStartDate: tripStartDate,
+            now: now
+        )
+
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                if let current = ItineraryCurrentNextResolver.currentSpot(
-                    in: itinerary,
-                    tripStartDate: tripStartDate,
-                    now: now
-                ) {
-                    CurrentSpotCard(spot: current)
-                }
-
-                if let next = ItineraryCurrentNextResolver.nextSpot(
-                    in: itinerary,
-                    tripStartDate: tripStartDate,
-                    now: now
-                ) {
-                    NextSpotCard(spot: next)
-                }
+                highlightCards(highlight)
 
                 VStack(alignment: .leading, spacing: 12) {
                     Text("旅程全体")
@@ -85,7 +77,7 @@ struct ItineraryViewerView: View {
                                         isTimeOrderMisaligned: misalignedSpotIDs.contains(spot.id),
                                         isTimeConflict: conflictingSpotIDs.contains(spot.id)
                                     ) {
-                                        statusBadge(for: spot, at: now)
+                                        statusBadge(for: spot, highlight: highlight)
                                     }
                                 }
                             }
@@ -98,8 +90,59 @@ struct ItineraryViewerView: View {
     }
 
     @ViewBuilder
-    private func statusBadge(for spot: Spot, at now: Date) -> some View {
-        let status = spotStatus(for: spot, at: now)
+    private func highlightCards(
+        _ highlight: ItineraryCurrentNextResolver.TripSpotHighlight
+    ) -> some View {
+        switch highlight.current {
+        case .hidden:
+            EmptyView()
+        case .moving, .scheduleFinished:
+            CurrentSpotCard(message: currentScheduleText(highlight.current))
+        case .spot(let spot):
+            CurrentSpotCard(spot: spot)
+        }
+        switch highlight.next {
+        case .spot(let spot):
+            NextSpotCard(spot: spot)
+        case .firstSpot(let spot):
+            NextSpotCard(firstSpot: spot)
+        case .noneRegistered, .scheduleFinished:
+            NextSpotCard(message: nextScheduleText(highlight.next))
+        }
+    }
+
+    private func currentScheduleText(
+        _ schedule: ItineraryCurrentNextResolver.CurrentSchedule
+    ) -> String {
+        switch schedule {
+        case .moving:
+            return "移動中"
+        case .scheduleFinished:
+            return "予定終了"
+        case .hidden, .spot:
+            return ""
+        }
+    }
+    
+    private func nextScheduleText(
+        _ schedule: ItineraryCurrentNextResolver.NextSchedule
+    ) -> String {
+        switch schedule {
+        case .noneRegistered:
+            return "予定なし"
+        case .scheduleFinished:
+            return "予定終了"
+        case .firstSpot, .spot:
+            return ""
+        }
+    }
+
+    @ViewBuilder
+    private func statusBadge(
+        for spot: Spot,
+        highlight: ItineraryCurrentNextResolver.TripSpotHighlight
+    ) -> some View {
+        let status = spotStatus(for: spot, highlight: highlight)
         VStack {
             Spacer()
             if status == .current {
@@ -111,20 +154,26 @@ struct ItineraryViewerView: View {
         }
     }
 
-    private func spotStatus(for spot: Spot, at now: Date) -> ItinerarySpotStatus {
-        if ItineraryCurrentNextResolver.currentSpot(
-            in: itinerary,
-            tripStartDate: tripStartDate,
-            now: now
-        )?.id == spot.id {
-            return .current
+    private func spotStatus(
+        for spot: Spot,
+        highlight: ItineraryCurrentNextResolver.TripSpotHighlight
+    ) -> ItinerarySpotStatus {
+        switch highlight.current {
+        case .spot(let current):
+            if current.id == spot.id { return .current }
+            break
+        default:
+            break
         }
-        if ItineraryCurrentNextResolver.nextSpot(
-            in: itinerary,
-            tripStartDate: tripStartDate,
-            now: now
-        )?.id == spot.id {
-            return .next
+        switch highlight.next {
+        case .firstSpot(let next):
+            if next.id == spot.id { return .next }
+            break
+        case .spot(let next):
+            if next.id == spot.id { return .next }
+            break
+        default:
+            break
         }
         return .none
     }
