@@ -1,9 +1,18 @@
 import Foundation
 import Testing
+import Dependencies
+import DependenciesTestSupport
 @testable import Shiori
 
+@Suite(
+    .dependencies {
+        $0.uuid = .incrementing
+    }
+)
 struct ItineraryConfirmCandidateTests {
-    private func makeSpot(id: UUID = UUID(), title: String) -> Spot {
+    @Dependency(\.uuid) var uuid
+    
+    private func makeSpot(id: UUID, title: String) -> Spot {
         Spot(id: id, title: title, startTime: nil, durationMinutes: nil, memo: "")
     }
 
@@ -20,14 +29,14 @@ struct ItineraryConfirmCandidateTests {
     }
 
     @Test func 指定した日の末尾へ候補を確定すること() {
-        let candidateID = UUID()
-        let existingID = UUID()
-        let day1ID = UUID()
-        let day2ID = UUID()
+        let candidateID = uuid()
+        let existingID = uuid()
+        let day1ID = uuid()
+        let day2ID = uuid()
         var itinerary = makeItinerary(
             candidates: [makeSpot(id: candidateID, title: "候補")],
             days: [
-                (id: day1ID, spots: [makeSpot(title: "Day1")]),
+                (id: day1ID, spots: [makeSpot(id: uuid(), title: "Day1")]),
                 (id: day2ID, spots: [makeSpot(id: existingID, title: "Day2")]),
             ]
         )
@@ -40,15 +49,15 @@ struct ItineraryConfirmCandidateTests {
     }
 
     @Test func 一日目を指定したとき一日目の末尾へ候補を確定すること() {
-        let candidateID = UUID()
-        let existingID = UUID()
-        let day1ID = UUID()
-        let day2ID = UUID()
+        let candidateID = uuid()
+        let existingID = uuid()
+        let day1ID = uuid()
+        let day2ID = uuid()
         var itinerary = makeItinerary(
             candidates: [makeSpot(id: candidateID, title: "候補")],
             days: [
                 (id: day1ID, spots: [makeSpot(id: existingID, title: "Day1")]),
-                (id: day2ID, spots: [makeSpot(title: "Day2")]),
+                (id: day2ID, spots: [makeSpot(id: uuid(), title: "Day2")]),
             ]
         )
 
@@ -60,35 +69,35 @@ struct ItineraryConfirmCandidateTests {
     }
 
     @Test func 未知の日IDのときは何もしないこと() {
-        let candidateID = UUID()
-        let day1ID = UUID()
+        let candidateID = uuid()
+        let day1ID = uuid()
         var itinerary = makeItinerary(
             candidates: [makeSpot(id: candidateID, title: "候補")],
             days: [
-                (id: day1ID, spots: [makeSpot(title: "Day1")]),
-                (id: UUID(), spots: []),
+                (id: day1ID, spots: [makeSpot(id: uuid(), title: "Day1")]),
+                (id: uuid(), spots: []),
             ]
         )
         let before = itinerary
 
-        itinerary.confirmCandidate(spotID: candidateID, toDayID: UUID())
+        itinerary.confirmCandidate(spotID: candidateID, toDayID: uuid())
 
         #expect(itinerary == before)
     }
 
     @Test func 未知の行き先IDのときは何もしないこと() {
-        let candidateID = UUID()
-        let day1ID = UUID()
+        let candidateID = uuid()
+        let day1ID = uuid()
         var itinerary = makeItinerary(
             candidates: [makeSpot(id: candidateID, title: "候補")],
             days: [
-                (id: day1ID, spots: [makeSpot(title: "Day1")]),
-                (id: UUID(), spots: []),
+                (id: day1ID, spots: [makeSpot(id: uuid(), title: "Day1")]),
+                (id: uuid(), spots: []),
             ]
         )
         let before = itinerary
 
-        itinerary.confirmCandidate(spotID: UUID(), toDayID: day1ID)
+        itinerary.confirmCandidate(spotID: uuid(), toDayID: day1ID)
 
         #expect(itinerary == before)
     }

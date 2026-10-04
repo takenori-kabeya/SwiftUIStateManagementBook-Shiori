@@ -1,9 +1,18 @@
 import Foundation
 import Testing
+import Dependencies
+import DependenciesTestSupport
 @testable import Shiori
 
+@Suite(
+    .dependencies {
+        $0.uuid = .incrementing
+    }
+)
 struct ItineraryMoveSpotTests {
-    private func makeSpot(id: UUID = UUID(), title: String) -> Spot {
+    @Dependency(\.uuid) var uuid
+
+    private func makeSpot(id: UUID, title: String) -> Spot {
         Spot(id: id, title: title, startTime: nil, durationMinutes: nil, memo: "")
     }
 
@@ -11,15 +20,15 @@ struct ItineraryMoveSpotTests {
         Itinerary(
             candidateSpots: [],
             itineraryDays: days.map { spots in
-                ItineraryDay(id: UUID(), spots: spots)
+                ItineraryDay(id: uuid(), spots: spots)
             }
         )
     }
 
     @Test func 挿入位置を指定しないとき別の日の末尾へ移動すること() {
-        let spotAID = UUID()
-        let spotBID = UUID()
-        let spotCID = UUID()
+        let spotAID = uuid()
+        let spotBID = uuid()
+        let spotCID = uuid()
         var itinerary = makeItinerary(days: [
             [makeSpot(id: spotAID, title: "A"), makeSpot(id: spotBID, title: "B")],
             [makeSpot(id: spotCID, title: "C")],
@@ -32,24 +41,24 @@ struct ItineraryMoveSpotTests {
     }
 
     @Test func 別の日の指定位置へ行き先を移動すること() {
-        let spotAID = UUID()
-        let spotBID = UUID()
-        let spotCID = UUID()
+        let spotAID = uuid()
+        let spotBID = uuid()
+        let spotCID = uuid()
+
+
+
         var itinerary = makeItinerary(days: [
             [makeSpot(id: spotAID, title: "A")],
             [makeSpot(id: spotBID, title: "B"), makeSpot(id: spotCID, title: "C")],
         ])
-
         itinerary.moveSpot(spotID: spotAID, toDayIndex: 1, toSpotIndex: 1)
-
         #expect(itinerary.itineraryDays[0].spots.map(\.id) == [])
         #expect(itinerary.itineraryDays[1].spots.map(\.id) == [spotBID, spotAID, spotCID])
     }
-
     @Test func 同じ日内で後ろへ行き先を移動すること() {
-        let spotAID = UUID()
-        let spotBID = UUID()
-        let spotCID = UUID()
+        let spotAID = uuid()
+        let spotBID = uuid()
+        let spotCID = uuid()
         var itinerary = makeItinerary(days: [
             [
                 makeSpot(id: spotAID, title: "A"),
@@ -65,9 +74,9 @@ struct ItineraryMoveSpotTests {
     }
 
     @Test func 同じ日内で前へ行き先を移動すること() {
-        let spotAID = UUID()
-        let spotBID = UUID()
-        let spotCID = UUID()
+        let spotAID = uuid()
+        let spotBID = uuid()
+        let spotCID = uuid()
         var itinerary = makeItinerary(days: [
             [
                 makeSpot(id: spotAID, title: "A"),
@@ -82,8 +91,8 @@ struct ItineraryMoveSpotTests {
     }
 
     @Test func 日インデックスが範囲外のとき最終日の末尾へ移動すること() {
-        let spotAID = UUID()
-        let spotBID = UUID()
+        let spotAID = uuid()
+        let spotBID = uuid()
         var itinerary = makeItinerary(days: [
             [makeSpot(id: spotAID, title: "A")],
             [makeSpot(id: spotBID, title: "B")],
@@ -96,8 +105,8 @@ struct ItineraryMoveSpotTests {
     }
 
     @Test func 日インデックスが負のとき一日目の末尾へ移動すること() {
-        let spotAID = UUID()
-        let spotBID = UUID()
+        let spotAID = uuid()
+        let spotBID = uuid()
         var itinerary = makeItinerary(days: [
             [makeSpot(id: spotAID, title: "A")],
             [makeSpot(id: spotBID, title: "B")],
@@ -110,9 +119,9 @@ struct ItineraryMoveSpotTests {
     }
 
     @Test func 行き先インデックスが範囲外のときその日の末尾へ移動すること() {
-        let spotAID = UUID()
-        let spotBID = UUID()
-        let spotCID = UUID()
+        let spotAID = uuid()
+        let spotBID = uuid()
+        let spotCID = uuid()
         var itinerary = makeItinerary(days: [
             [makeSpot(id: spotAID, title: "A")],
             [makeSpot(id: spotBID, title: "B"), makeSpot(id: spotCID, title: "C")],
@@ -125,15 +134,15 @@ struct ItineraryMoveSpotTests {
     }
 
     @Test func 未知の行き先IDのときは何もしないこと() {
-        let spotAID = UUID()
-        let spotBID = UUID()
+        let spotAID = uuid()
+        let spotBID = uuid()
         var itinerary = makeItinerary(days: [
             [makeSpot(id: spotAID, title: "A")],
             [makeSpot(id: spotBID, title: "B")],
         ])
         let before = itinerary
 
-        itinerary.moveSpot(spotID: UUID(), toDayIndex: 1)
+        itinerary.moveSpot(spotID: uuid(), toDayIndex: 1)
 
         #expect(itinerary == before)
     }

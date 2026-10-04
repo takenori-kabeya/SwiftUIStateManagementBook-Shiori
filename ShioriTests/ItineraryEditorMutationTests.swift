@@ -1,10 +1,19 @@
 import Foundation
 import Testing
+import Dependencies
+import DependenciesTestSupport
 @testable import Shiori
 
+@Suite(
+    .dependencies {
+        $0.uuid = .incrementing
+    }
+)
 struct ItineraryEditorMutationTests {
+	@Dependency(\.uuid) var uuid
+
     private func makeSpot(
-        id: UUID = UUID(),
+        id: UUID,
         title: String,
         memo: String = ""
     ) -> Spot {
@@ -12,7 +21,7 @@ struct ItineraryEditorMutationTests {
     }
     
     private func makeSpot(
-        id: UUID = UUID(),
+        id: UUID,
         title: String,
         hour: Int? = nil,
         minute: Int = 0,
@@ -35,7 +44,7 @@ struct ItineraryEditorMutationTests {
         Itinerary(
             candidateSpots: candidates,
             itineraryDays: days.map { spots in
-                ItineraryDay(id: UUID(), spots: spots)
+                ItineraryDay(id: uuid(), spots: spots)
             }
         )
     }
@@ -67,13 +76,13 @@ struct ItineraryEditorMutationTests {
     // MARK: - confirmCandidate
     
     @Test func 確定で日IDに対応する日へ候補を移すこと() {
-        let candidateID = UUID()
-        let day0ID = UUID()
-        let day1ID = UUID()
+        let candidateID = uuid()
+        let day0ID = uuid()
+        let day1ID = uuid()
         var itinerary = Itinerary(
             candidateSpots: [makeSpot(id: candidateID, title: "候補")],
             itineraryDays: [
-                ItineraryDay(id: day0ID, spots: [makeSpot(title: "Day0")]),
+                ItineraryDay(id: day0ID, spots: [makeSpot(id: uuid(), title: "Day0")]),
                 ItineraryDay(id: day1ID, spots: []),
             ]
         )
@@ -91,9 +100,9 @@ struct ItineraryEditorMutationTests {
     // MARK: - returnSpotToCandidates
 
     @Test func 候補へ戻すと確定済み行き先を候補末尾へ移すこと() {
-        let spotAID = UUID()
-        let spotBID = UUID()
-        let existingCandidateID = UUID()
+        let spotAID = uuid()
+        let spotBID = uuid()
+        let existingCandidateID = uuid()
         var itinerary = makeItinerary(
             candidates: [makeSpot(id: existingCandidateID, title: "候補")],
             days: [
@@ -110,12 +119,12 @@ struct ItineraryEditorMutationTests {
 
     @Test func 未知の行き先IDのとき候補へ戻しても何もしないこと() {
         var itinerary = makeItinerary(
-            candidates: [makeSpot(title: "候補")],
-            days: [[makeSpot(title: "A")]]
+            candidates: [makeSpot(id: uuid(), title: "候補")],
+            days: [[makeSpot(id: uuid(), title: "A")]]
         )
         let before = itinerary
 
-        itinerary.returnSpotToCandidates(spotID: UUID())
+        itinerary.returnSpotToCandidates(spotID: uuid())
 
         #expect(itinerary == before)
     }
@@ -123,9 +132,9 @@ struct ItineraryEditorMutationTests {
     // MARK: - deleteSpot
 
     @Test func 削除で候補から行き先を取り除くこと() {
-        let candidateID = UUID()
+        let candidateID = uuid()
         var itinerary = makeItinerary(
-            candidates: [makeSpot(id: candidateID, title: "候補"), makeSpot(title: "他")],
+            candidates: [makeSpot(id: candidateID, title: "候補"), makeSpot(id: uuid(), title: "他")],
             days:[[]]
         )
 
@@ -135,8 +144,8 @@ struct ItineraryEditorMutationTests {
     }
 
     @Test func 削除で確定日の行き先を取り除くこと() {
-        let spotAID = UUID()
-        let spotBID = UUID()
+        let spotAID = uuid()
+        let spotBID = uuid()
         var itinerary = makeItinerary(days: [
             [makeSpot(id: spotAID, title: "A")],
             [makeSpot(id: spotBID, title: "B")],
@@ -150,12 +159,12 @@ struct ItineraryEditorMutationTests {
 
     @Test func 未知の行き先IDのとき削除は何もしないこと() {
         var itinerary = makeItinerary(
-            candidates: [makeSpot(title: "候補")],
-            days: [[makeSpot(title: "A")]]
+            candidates: [makeSpot(id: uuid(), title: "候補")],
+            days: [[makeSpot(id: uuid(), title: "A")]]
         )
         let before = itinerary
 
-        itinerary.deleteSpot(spotID: UUID())
+        itinerary.deleteSpot(spotID: uuid())
 
         #expect(itinerary == before)
     }
@@ -163,7 +172,7 @@ struct ItineraryEditorMutationTests {
     // MARK: - updateSpot
 
     @Test func 更新で候補の行き先を置き換えること() {
-        let spotID = UUID()
+        let spotID = uuid()
         var itinerary = makeItinerary(
             candidates: [makeSpot(id: spotID, title: "旧", memo: "m1")],
             days: [[]]
@@ -176,9 +185,9 @@ struct ItineraryEditorMutationTests {
     }
 
     @Test func 更新で確定済み行き先を置き換えること() {
-        let spotID = UUID()
+        let spotID = uuid()
         var itinerary = makeItinerary(days: [
-            [makeSpot(id: spotID, title: "旧"), makeSpot(title: "他")],
+            [makeSpot(id: spotID, title: "旧"), makeSpot(id: uuid(), title: "他")],
         ])
         let updated = makeSpot(id: spotID, title: "新", memo: "メモ")
 
@@ -189,7 +198,7 @@ struct ItineraryEditorMutationTests {
     }
 
     @Test func タイトルが空または空白のみのとき更新は何もしないこと() {
-        let spotID = UUID()
+        let spotID = uuid()
         var itinerary = makeItinerary(
             candidates: [makeSpot(id: spotID, title: "旧")],
             days: [[]]
@@ -203,12 +212,12 @@ struct ItineraryEditorMutationTests {
 
     @Test func 未知の行き先IDのとき更新は何もしないこと() {
         var itinerary = makeItinerary(
-            candidates: [makeSpot(title: "候補")],
-            days: [[makeSpot(title: "A")]]
+            candidates: [makeSpot(id: uuid(), title: "候補")],
+            days: [[makeSpot(id: uuid(), title: "A")]]
         )
         let before = itinerary
 
-        itinerary.updateSpot(makeSpot(id: UUID(), title: "新"))
+        itinerary.updateSpot(makeSpot(id: uuid(), title: "新"))
 
         #expect(itinerary == before)
     }
@@ -216,8 +225,8 @@ struct ItineraryEditorMutationTests {
     // MARK: - moveConfirmedSpotUp / Down
 
     @Test func 上へ移動で同じ日内の前の行き先と入れ替えること() {
-        let spotAID = UUID()
-        let spotBID = UUID()
+        let spotAID = uuid()
+        let spotBID = uuid()
         var itinerary = makeItinerary(days: [
             [makeSpot(id: spotAID, title: "A"), makeSpot(id: spotBID, title: "B")],
         ])
@@ -228,8 +237,8 @@ struct ItineraryEditorMutationTests {
     }
 
     @Test func 下へ移動で日境界を越えて入れ替えること() {
-        let spotAID = UUID()
-        let spotBID = UUID()
+        let spotAID = uuid()
+        let spotBID = uuid()
         var itinerary = makeItinerary(days: [
             [makeSpot(id: spotAID, title: "A")],
             [makeSpot(id: spotBID, title: "B")],
@@ -242,9 +251,9 @@ struct ItineraryEditorMutationTests {
     }
 
     @Test func 先頭の行き先を上へ移動しても何もしないこと() {
-        let spotAID = UUID()
+        let spotAID = uuid()
         var itinerary = makeItinerary(days: [
-            [makeSpot(id: spotAID, title: "A"), makeSpot(title: "B")],
+            [makeSpot(id: spotAID, title: "A"), makeSpot(id: uuid(), title: "B")],
         ])
         let before = itinerary
 
@@ -254,9 +263,9 @@ struct ItineraryEditorMutationTests {
     }
 
     @Test func 末尾の行き先を下へ移動しても何もしないこと() {
-        let spotBID = UUID()
+        let spotBID = uuid()
         var itinerary = makeItinerary(days: [
-            [makeSpot(title: "A"), makeSpot(id: spotBID, title: "B")],
+            [makeSpot(id: uuid(), title: "A"), makeSpot(id: spotBID, title: "B")],
         ])
         let before = itinerary
 
@@ -266,10 +275,10 @@ struct ItineraryEditorMutationTests {
     }
 
     @Test func 未知の行き先IDのとき上へ移動しても何もしないこと() {
-        var itinerary = makeItinerary(days: [[makeSpot(title: "A")]])
+        var itinerary = makeItinerary(days: [[makeSpot(id: uuid(), title: "A")]])
         let before = itinerary
 
-        itinerary.moveConfirmedSpotUp(spotID: UUID())
+        itinerary.moveConfirmedSpotUp(spotID: uuid())
 
         #expect(itinerary == before)
     }
@@ -277,10 +286,10 @@ struct ItineraryEditorMutationTests {
     // MARK: - moveSpotToPreviousDay / NextDay
 
     @Test func 翌日へ移動で移動先の末尾へ追加すること() {
-        let spotAID = UUID()
-        let spotCID = UUID()
+        let spotAID = uuid()
+        let spotCID = uuid()
         var itinerary = makeItinerary(days: [
-            [makeSpot(id: spotAID, title: "A"), makeSpot(title: "B")],
+            [makeSpot(id: spotAID, title: "A"), makeSpot(id: uuid(), title: "B")],
             [makeSpot(id: spotCID, title: "C")],
         ])
 
@@ -291,8 +300,8 @@ struct ItineraryEditorMutationTests {
     }
 
     @Test func 前日へ移動で移動先の末尾へ追加すること() {
-        let spotBID = UUID()
-        let spotAID = UUID()
+        let spotBID = uuid()
+        let spotAID = uuid()
         var itinerary = makeItinerary(days: [
             [makeSpot(id: spotAID, title: "A")],
             [makeSpot(id: spotBID, title: "B")],
@@ -305,10 +314,10 @@ struct ItineraryEditorMutationTests {
     }
 
     @Test func 一日目の行き先を前日へ移動しても何もしないこと() {
-        let spotAID = UUID()
+        let spotAID = uuid()
         var itinerary = makeItinerary(days: [
             [makeSpot(id: spotAID, title: "A")],
-            [makeSpot(title: "B")],
+            [makeSpot(id: uuid(), title: "B")],
         ])
         let before = itinerary
 
@@ -318,9 +327,9 @@ struct ItineraryEditorMutationTests {
     }
 
     @Test func 最終日の行き先を翌日へ移動しても何もしないこと() {
-        let spotBID = UUID()
+        let spotBID = uuid()
         var itinerary = makeItinerary(days: [
-            [makeSpot(title: "A")],
+            [makeSpot(id: uuid(), title: "A")],
             [makeSpot(id: spotBID, title: "B")],
         ])
         let before = itinerary
@@ -333,22 +342,22 @@ struct ItineraryEditorMutationTests {
     // MARK: - resolveScheduleConflicts
     
     @Test func 指定した日の時間重なりだけを解消し他の日は変えないこと() {
-        let day1ID = UUID()
-        let day2ID = UUID()
+        let day1ID = uuid()
+        let day2ID = uuid()
         var itinerary = Itinerary(
             candidateSpots: [],
             itineraryDays: [
                 ItineraryDay(
                     id: day1ID,
                     spots: [
-                        makeSpot(title: "A", hour: 10, minute: 0, durationMinutes: 90),
-                        makeSpot(title: "B", hour: 11, minute: 0, durationMinutes: 60),
+                        makeSpot(id: uuid(), title: "A", hour: 10, minute: 0, durationMinutes: 90),
+                        makeSpot(id: uuid(), title: "B", hour: 11, minute: 0, durationMinutes: 60),
                     ]
                 ),
                 ItineraryDay(
                     id: day2ID,
                     spots: [
-                        makeSpot(title: "Day2Only", hour: 9, minute: 0, durationMinutes: 30),
+                        makeSpot(id: uuid(), title: "Day2Only", hour: 9, minute: 0, durationMinutes: 30),
                     ]
                 ),
             ]
@@ -363,22 +372,22 @@ struct ItineraryEditorMutationTests {
     }
 
     @Test func 未知の日IDのときは何もしないこと() {
-        let dayID = UUID()
+        let dayID = uuid()
         var itinerary = Itinerary(
             candidateSpots: [],
             itineraryDays: [
                 ItineraryDay(
                     id: dayID,
                     spots: [
-                        makeSpot(title: "A", hour: 10, minute: 0, durationMinutes: 90),
-                        makeSpot(title: "B", hour: 11, minute: 0, durationMinutes: 60),
+                        makeSpot(id: uuid(), title: "A", hour: 10, minute: 0, durationMinutes: 90),
+                        makeSpot(id: uuid(), title: "B", hour: 11, minute: 0, durationMinutes: 60),
                     ]
                 ),
             ]
         )
         let before = itinerary
 
-        itinerary.resolveScheduleConflicts(dayID: UUID())
+        itinerary.resolveScheduleConflicts(dayID: uuid())
 
         #expect(itinerary == before)
     }

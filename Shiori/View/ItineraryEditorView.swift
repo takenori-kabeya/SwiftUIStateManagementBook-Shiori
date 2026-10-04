@@ -444,7 +444,7 @@ struct ItineraryEditorView: View {
 }
 
 #Preview {
-    @Previewable @State var trip = TripPersistenceClient.defaultTrip
+    @Previewable @State var trip = Trip.previewTrip
     ItineraryEditorView(store: Store(initialState: ItineraryFeature.State(
         itinerary: trip.itinerary)) {
             ItineraryFeature()

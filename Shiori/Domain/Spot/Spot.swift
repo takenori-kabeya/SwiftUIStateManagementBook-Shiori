@@ -1,4 +1,5 @@
 import Foundation
+import ComposableArchitecture
 
 nonisolated struct SpotTime: Codable, Equatable {
     var hour: Int
@@ -9,7 +10,8 @@ nonisolated struct SpotTime: Codable, Equatable {
     }
     
     static func now(calendar: Calendar = .current) -> SpotTime {
-        let currentDateTime = Date.now
+        @Dependency(\.date) var date
+        let currentDateTime = date.now
         let time = calendar.dateComponents([.hour, .minute], from: currentDateTime)
         return SpotTime(hour: time.hour!, minute: time.minute!)
     }
@@ -20,7 +22,8 @@ nonisolated struct SpotTime: Codable, Equatable {
     }
     
     func date(calendar: Calendar = .current) -> Date {
-        let currentDateTime = Date.now
+        @Dependency(\.date) var date
+        let currentDateTime = date.now
         let day = calendar.dateComponents([.year, .month, .day], from: currentDateTime)
         return calendar.date(from: DateComponents(year: day.year, month: day.month, day: day.day, hour: hour, minute: minute))!
     }

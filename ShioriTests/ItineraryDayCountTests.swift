@@ -1,9 +1,18 @@
 import Foundation
 import Testing
+import Dependencies
+import DependenciesTestSupport
 @testable import Shiori
 
+@Suite(
+    .dependencies {
+        $0.uuid = .incrementing
+    }
+)
 struct ItineraryDayCountTests {
-    private func makeSpot(id: UUID = UUID(), title: String) -> Spot {
+    @Dependency(\.uuid) var uuid
+    
+    private func makeSpot(id: UUID, title: String) -> Spot {
         Spot(id: id, title: title, startTime: nil, durationMinutes: nil, memo: "")
     }
 
@@ -11,14 +20,14 @@ struct ItineraryDayCountTests {
         Itinerary(
             candidateSpots: [],
             itineraryDays: days.map { spots in
-                ItineraryDay(id: UUID(), spots: spots)
+                ItineraryDay(id: uuid(), spots: spots)
             }
         )
     }
 
     @Test func 二日から三日に増やすとき空の三日目が増えること() {
-        let day1SpotID = UUID()
-        let day2SpotID = UUID()
+        let day1SpotID = uuid()
+        let day2SpotID = uuid()
         var itinerary = makeItinerary(days: [
             [makeSpot(id: day1SpotID, title: "Day1")],
             [makeSpot(id: day2SpotID, title: "Day2")],
@@ -33,11 +42,11 @@ struct ItineraryDayCountTests {
     }
 
     @Test func 三日から二日に減らすとき三日目の行き先が二日目の末尾へ順序を保って移ること() {
-        let spotAID = UUID()
-        let spotBID = UUID()
-        let spotCID = UUID()
-        let spotDID = UUID()
-        let spotEID = UUID()
+        let spotAID = uuid()
+        let spotBID = uuid()
+        let spotCID = uuid()
+        let spotDID = uuid()
+        let spotEID = uuid()
         var itinerary = makeItinerary(days: [
             [makeSpot(id: spotAID, title: "A")],
             [makeSpot(id: spotBID, title: "B"), makeSpot(id: spotCID, title: "C")],
@@ -52,11 +61,11 @@ struct ItineraryDayCountTests {
     }
 
     @Test func 三日から一日に減らすとき二日目と三日目の行き先が順番どおり一日目の末尾へ来ること() {
-        let spotAID = UUID()
-        let spotBID = UUID()
-        let spotCID = UUID()
-        let spotDID = UUID()
-        let spotEID = UUID()
+        let spotAID = uuid()
+        let spotBID = uuid()
+        let spotCID = uuid()
+        let spotDID = uuid()
+        let spotEID = uuid()
         var itinerary = makeItinerary(days: [
             [makeSpot(id: spotAID, title: "A")],
             [makeSpot(id: spotBID, title: "B"), makeSpot(id: spotCID, title: "C")],
@@ -70,8 +79,8 @@ struct ItineraryDayCountTests {
     }
 
     @Test func 零日を指定しても一日残ること() {
-        let spotAID = UUID()
-        let spotBID = UUID()
+        let spotAID = uuid()
+        let spotBID = uuid()
         var itinerary = makeItinerary(days: [
             [makeSpot(id: spotAID, title: "A")],
             [makeSpot(id: spotBID, title: "B")],

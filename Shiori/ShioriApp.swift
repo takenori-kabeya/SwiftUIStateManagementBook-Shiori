@@ -1,22 +1,23 @@
 import SwiftUI
+import ComposableArchitecture
 
 @main
 struct ShioriApp: App {
-    private var tripPersistence: TripPersistenceClient {
-        #if DEBUG
-        ProcessInfo.processInfo.arguments.contains("UITesting")
-            ? .uiTest
-            : .liveValue
-        #else
-            .liveValue
-        #endif
+    private static let store: StoreOf<TripsFeature> = Store(
+        initialState: TripsFeature.State()
+    ) {
+        TripsFeature()
+    } withDependencies: {
+#if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("UITesting") {
+            $0.tripPersistence = .uiTest
+        }
+#endif
     }
 
     var body: some Scene {
         WindowGroup {
-            TripListView(store: Store(initialState: TripsFeature.State()) {
-                TripsFeature()
-            })
+            TripListView(store: Self.store)
         }
     }
 }

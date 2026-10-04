@@ -1,10 +1,19 @@
 import Foundation
 import Testing
+import Dependencies
+import DependenciesTestSupport
 @testable import Shiori
 
+@Suite(
+    .dependencies {
+        $0.uuid = .incrementing
+    }
+)
 struct ItineraryCurrentNextResolverTests {
+    @Dependency(\.uuid) var uuid
+    
     private func makeSpot(
-        id: UUID = UUID(),
+        id: UUID,
         title: String,
         hour: Int? = nil,
         minute: Int = 0,
@@ -28,7 +37,7 @@ struct ItineraryCurrentNextResolverTests {
 
     private func makeItinerary(days: [[Spot]]) -> Itinerary {
         let itineraryDays = days.map { spots in
-            ItineraryDay(id: UUID(), spots: spots)
+            ItineraryDay(id: uuid(), spots: spots)
         }
         return Itinerary(candidateSpots: [], itineraryDays: itineraryDays)
     }
@@ -36,7 +45,7 @@ struct ItineraryCurrentNextResolverTests {
     // MARK: - Current spot
 
     @Test func 現在時刻が滞在時間帯の内側のとき現在の予定を返すこと() {
-        let id = UUID()
+        let id = uuid()
         let itinerary = makeItinerary(days: [
             [makeSpot(id: id, title: "浅草寺", hour: 10, minute: 30, durationMinutes: 30)],
         ])
@@ -55,7 +64,7 @@ struct ItineraryCurrentNextResolverTests {
 
     @Test func 現在時刻が滞在開始より前のとき現在の予定を返さないこと() {
         let itinerary = makeItinerary(days: [
-            [makeSpot(title: "浅草寺", hour: 10, minute: 30, durationMinutes: 30)],
+            [makeSpot(id: uuid(), title: "浅草寺", hour: 10, minute: 30, durationMinutes: 30)],
         ])
 
         let tripStart = makeDate(year: 2024, month: 1, day: 1, hour: 0, minute: 0)
@@ -72,7 +81,7 @@ struct ItineraryCurrentNextResolverTests {
 
     @Test func 現在時刻が滞在終了と一致するとき現在の予定を返さないこと() {
         let itinerary = makeItinerary(days: [
-            [makeSpot(title: "浅草寺", hour: 10, minute: 30, durationMinutes: 30)],
+            [makeSpot(id: uuid(), title: "浅草寺", hour: 10, minute: 30, durationMinutes: 30)],
         ])
 
         let tripStart = makeDate(year: 2024, month: 1, day: 1, hour: 0, minute: 0)
@@ -89,7 +98,7 @@ struct ItineraryCurrentNextResolverTests {
 
     @Test func 現在の予定の検索では滞在時間がない行き先を無視すること() {
         let itinerary = makeItinerary(days: [
-            [makeSpot(title: "スカイツリー", hour: 10, minute: 30)],
+            [makeSpot(id: uuid(), title: "スカイツリー", hour: 10, minute: 30)],
         ])
 
         let tripStart = makeDate(year: 2024, month: 1, day: 1, hour: 0, minute: 0)
@@ -107,10 +116,10 @@ struct ItineraryCurrentNextResolverTests {
     // MARK: - Next spot
 
     @Test func 現在の予定があるとき並び順で次の予定を返すこと() {
-        let nextID = UUID()
+        let nextID = uuid()
         let itinerary = makeItinerary(days: [
             [
-                makeSpot(title: "浅草寺", hour: 10, minute: 30, durationMinutes: 30),
+                makeSpot(id: uuid(), title: "浅草寺", hour: 10, minute: 30, durationMinutes: 30),
                 makeSpot(id: nextID, title: "スカイツリー"),
             ],
         ])
@@ -129,7 +138,7 @@ struct ItineraryCurrentNextResolverTests {
 
     @Test func 現在の予定が最後の行き先のとき次の予定を返さないこと() {
         let itinerary = makeItinerary(days: [
-            [makeSpot(title: "浅草寺", hour: 10, minute: 30, durationMinutes: 30)],
+            [makeSpot(id: uuid(), title: "浅草寺", hour: 10, minute: 30, durationMinutes: 30)],
         ])
 
         let tripStart = makeDate(year: 2024, month: 1, day: 1, hour: 0, minute: 0)
@@ -145,12 +154,12 @@ struct ItineraryCurrentNextResolverTests {
     }
 
     @Test func 現在の予定がないとき旅程順で最初のこれからの予定を返すこと() {
-        let idB = UUID()
+        let idB = uuid()
         let itinerary = makeItinerary(days: [
             [
-                makeSpot(title: "浅草寺", hour: 10, minute: 30, durationMinutes: 30),
+                makeSpot(id: uuid(), title: "浅草寺", hour: 10, minute: 30, durationMinutes: 30),
                 makeSpot(id: idB, title: "上野", hour: 14, minute: 0, durationMinutes: 60),
-                makeSpot(title: "スカイツリー", hour: 12, minute: 0, durationMinutes: 60),
+                makeSpot(id: uuid(), title: "スカイツリー", hour: 12, minute: 0, durationMinutes: 60),
             ],
         ])
 
@@ -167,10 +176,10 @@ struct ItineraryCurrentNextResolverTests {
     }
 
     @Test func 時刻指定の行き先がすべて終了しているとき最後に終了した行き先の次を返すこと() {
-        let nextID = UUID()
+        let nextID = uuid()
         let itinerary = makeItinerary(days: [
             [
-                makeSpot(title: "浅草寺", hour: 10, minute: 30, durationMinutes: 30),
+                makeSpot(id: uuid(), title: "浅草寺", hour: 10, minute: 30, durationMinutes: 30),
                 makeSpot(id: nextID, title: "スカイツリー"),
             ],
         ])
@@ -187,12 +196,14 @@ struct ItineraryCurrentNextResolverTests {
         #expect(next?.id == nextID)
     }
 
-    @Test func 最初の滞在開始より前のときこれからの到着時刻でもっとも早い行き先を返すこと() {
-        let nextID = UUID()
+    @Test func 最初の滞在開始より前のとき旅程順の先頭を返すこと() {
+
+
+        let nextID = uuid()
         let itinerary = makeItinerary(days: [
             [
-                makeSpot(id: nextID, title: "浅草寺", hour: 10, minute: 30, durationMinutes: 30),
-                makeSpot(title: "スカイツリー", hour: 13, minute: 0, durationMinutes: 60),
+                makeSpot(id: nextID, title: "浅草寺", hour: 13, minute: 30, durationMinutes: 30),
+                makeSpot(id: uuid(), title: "スカイツリー", hour: 10, minute: 0, durationMinutes: 60),
             ],
         ])
 
@@ -211,8 +222,8 @@ struct ItineraryCurrentNextResolverTests {
     // MARK: - Multi-day
 
     @Test func 旅行開始日を基準にした当日の行き先を現在の予定として返すこと() {
-        let day1Spot = makeSpot(title: "Day1", hour: 10, minute: 0, durationMinutes: 60)
-        let day2SpotID = UUID()
+        let day1Spot = makeSpot(id: uuid(), title: "Day1", hour: 10, minute: 0, durationMinutes: 60)
+        let day2SpotID = uuid()
         let day2Spot = makeSpot(id: day2SpotID, title: "Day2", hour: 10, minute: 0, durationMinutes: 60)
 
         let itinerary = makeItinerary(days: [
@@ -233,8 +244,8 @@ struct ItineraryCurrentNextResolverTests {
     }
 
     @Test func 当日の行き先がすべて終了しているとき翌日の行き先を次の予定として返すこと() {
-        let day1Spot = makeSpot(title: "Day1", hour: 10, minute: 0, durationMinutes: 60)
-        let day2NextID = UUID()
+        let day1Spot = makeSpot(id: uuid(), title: "Day1", hour: 10, minute: 0, durationMinutes: 60)
+        let day2NextID = uuid()
         let day2Spot = makeSpot(id: day2NextID, title: "Day2", hour: 9, minute: 0, durationMinutes: 60)
 
         let itinerary = makeItinerary(days: [
@@ -255,7 +266,7 @@ struct ItineraryCurrentNextResolverTests {
     }
 
     @Test func 旅行開始前なら現在の予定を返さないこと() {
-        let firstSpot = makeSpot(title: "First", hour: 10, minute: 0, durationMinutes: 60)
+        let firstSpot = makeSpot(id: uuid(), title: "First", hour: 10, minute: 0, durationMinutes: 60)
         let itinerary = makeItinerary(days: [[firstSpot]])
 
         let tripStart = makeDate(year: 2024, month: 1, day: 1, hour: 0, minute: 0)
@@ -271,7 +282,7 @@ struct ItineraryCurrentNextResolverTests {
     }
 
     @Test func 旅行開始前なら最初の行き先を次の予定として返すこと() {
-        let firstSpotID = UUID()
+        let firstSpotID = uuid()
         let firstSpot = makeSpot(id: firstSpotID, title: "First", hour: 10, minute: 0, durationMinutes: 60)
         let itinerary = makeItinerary(days: [[firstSpot]])
 
@@ -288,8 +299,8 @@ struct ItineraryCurrentNextResolverTests {
     }
 
     @Test func 旅行終了後なら現在の予定も次の予定も返さないこと() {
-        let day1Spot = makeSpot(title: "Day1", hour: 10, minute: 0, durationMinutes: 60)
-        let day2Spot = makeSpot(title: "Day2", hour: 10, minute: 0, durationMinutes: 60)
+        let day1Spot = makeSpot(id: uuid(), title: "Day1", hour: 10, minute: 0, durationMinutes: 60)
+        let day2Spot = makeSpot(id: uuid(), title: "Day2", hour: 10, minute: 0, durationMinutes: 60)
         let itinerary = makeItinerary(days: [
             [day1Spot],
             [day2Spot],
@@ -314,8 +325,8 @@ struct ItineraryCurrentNextResolverTests {
     }
 
     @Test func 同じ到着時刻でも一日目と二日目の行き先を混同しないこと() {
-        let day1SpotID = UUID()
-        let day2SpotID = UUID()
+        let day1SpotID = uuid()
+        let day2SpotID = uuid()
         let day1Spot = makeSpot(id: day1SpotID, title: "Day1", hour: 10, minute: 0, durationMinutes: 60)
         let day2Spot = makeSpot(id: day2SpotID, title: "Day2", hour: 10, minute: 0, durationMinutes: 60)
         let itinerary = makeItinerary(days: [
@@ -346,7 +357,7 @@ struct ItineraryCurrentNextResolverTests {
 
     // β版制限: 日をまたぐ滞在は現在の予定にしない
     @Test func 前日二十三時開始の行き先を翌日一時に現在の予定としないこと() {
-        let overnightSpot = makeSpot(title: "Overnight", hour: 23, minute: 0, durationMinutes: 180)
+        let overnightSpot = makeSpot(id: uuid(), title: "Overnight", hour: 23, minute: 0, durationMinutes: 180)
         let itinerary = makeItinerary(days: [
             [overnightSpot],
         ])

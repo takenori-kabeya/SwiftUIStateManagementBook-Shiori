@@ -1,12 +1,21 @@
 import Foundation
 import Testing
+import Dependencies
+import DependenciesTestSupport
 @testable import Shiori
 
 /// `ItineraryFeature` を `TestStore` で検証する
+@Suite(
+    .dependencies {
+        $0.uuid = .incrementing
+    }
+)
 @MainActor
 struct ItineraryFeatureTests {
+    @Dependency(\.uuid) var uuid
+    
     private func makeSpot(
-        id: UUID = UUID(),
+        id: UUID,
         title: String,
         hour: Int? = nil,
         minute: Int = 0,
@@ -23,17 +32,17 @@ struct ItineraryFeatureTests {
     }
 
     @Test func 指定した日の時間重なりだけを解消し他の日は変えないこと() async {
-        let day1ID = UUID()
-        let day2ID = UUID()
-        let day2Spot = makeSpot(title: "Day2Only", hour: 9, minute: 0, durationMinutes: 30)
+        let day1ID = uuid()
+        let day2ID = uuid()
+        let day2Spot = makeSpot(id: uuid(), title: "Day2Only", hour: 9, minute: 0, durationMinutes: 30)
         let initial = Itinerary(
             candidateSpots: [],
             itineraryDays: [
                 ItineraryDay(
                     id: day1ID,
                     spots: [
-                        makeSpot(title: "A", hour: 10, minute: 0, durationMinutes: 90),
-                        makeSpot(title: "B", hour: 11, minute: 0, durationMinutes: 60),
+                        makeSpot(id: uuid(), title: "A", hour: 10, minute: 0, durationMinutes: 90),
+                        makeSpot(id: uuid(), title: "B", hour: 11, minute: 0, durationMinutes: 60),
                     ]
                 ),
                 ItineraryDay(
@@ -45,22 +54,20 @@ struct ItineraryFeatureTests {
         let store = TestStore(initialState: ItineraryFeature.State(itinerary: initial)) {
             ItineraryFeature()
         }
-
         await store.send(.autoShiftButtonTapped(dayID: day1ID)) {
             $0.itinerary.itineraryDays[0].spots[1].startTime = SpotTime(hour: 11, minute: 30)
         }
     }
-
     @Test func 未知の日IDのときは何もしないこと() async {
-        let dayID = UUID()
+        let dayID = uuid()
         let initial = Itinerary(
             candidateSpots: [],
             itineraryDays: [
                 ItineraryDay(
                     id: dayID,
                     spots: [
-                        makeSpot(title: "A", hour: 10, minute: 0, durationMinutes: 90),
-                        makeSpot(title: "B", hour: 11, minute: 0, durationMinutes: 60),
+                        makeSpot(id: uuid(), title: "A", hour: 10, minute: 0, durationMinutes: 90),
+                        makeSpot(id: uuid(), title: "B", hour: 11, minute: 0, durationMinutes: 60),
                     ]
                 ),
             ]
@@ -69,15 +76,37 @@ struct ItineraryFeatureTests {
             ItineraryFeature()
         }
 
-        await store.send(.autoShiftButtonTapped(dayID: UUID()))
+        await store.send(.autoShiftButtonTapped(dayID: uuid()))
     }
 
+    @Test func 候補追加でタイトルを候補へ追加すること() async {
+        let store = TestStore(
+            initialState: ItineraryFeature.State(
+                itinerary: Itinerary(candidateSpots: [], itineraryDays: [ItineraryDay(id: uuid())]) // ここのuuid()で0番が採られる
+            )
+        ) {
+            ItineraryFeature()
+        }
+        let implicitSpotID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")! // makeSpotで生成されるSpotのIDを推測。0の次なので1のはず
+
+        let newTitle = "新候補"
+        await store.send(.addCandidateButtonTapped(title: newTitle)) {
+            $0.itinerary.candidateSpots.append(makeSpot(id: implicitSpotID, title: newTitle))
+        }
+        #expect(store.state.itinerary.candidateSpots.map(\.title) == ["新候補"])
+        #expect(store.state.itinerary.candidateSpots.count == 1)
+        #expect(store.state.itinerary.candidateSpots[0].memo == "")
+        #expect(store.state.itinerary.candidateSpots[0].startTime == nil)
+    }
+    
+
+
     @Test func 確定で日IDに対応する日へ候補を移すこと() async {
-        let candidateID = UUID()
-        let day0ID = UUID()
-        let day1ID = UUID()
+        let candidateID = uuid()
+        let day0ID = uuid()
+        let day1ID = uuid()
         let candidate = makeSpot(id: candidateID, title: "候補")
-        let day0Spot = makeSpot(title: "Day0")
+        let day0Spot = makeSpot(id: uuid(), title: "Day0")
         let store = TestStore(
             initialState: ItineraryFeature.State(
                 itinerary: Itinerary(
@@ -99,28 +128,28 @@ struct ItineraryFeatureTests {
     }
 
     @Test func 候補へ戻すと確定済み行き先を候補へ戻すこと() async {
-        let spotID = UUID()
+        let spotID = uuid()
+
+
         let spot = makeSpot(id: spotID, title: "A")
         let store = TestStore(
             initialState: ItineraryFeature.State(
                 itinerary: Itinerary(
                     candidateSpots: [],
-                    itineraryDays: [ItineraryDay(id: UUID(), spots: [spot])]
+                    itineraryDays: [ItineraryDay(id: uuid(), spots: [spot])]
                 )
             )
         ) {
             ItineraryFeature()
         }
-
         await store.send(.returnToCandidateButtonTapped(spotID: spotID)) {
             $0.itinerary.itineraryDays[0].spots = []
             $0.itinerary.candidateSpots = [spot]
         }
     }
-
     @Test func 上へ移動で前の行き先と入れ替えること() async {
-        let spotAID = UUID()
-        let spotBID = UUID()
+        let spotAID = uuid()
+        let spotBID = uuid()
         let spotA = makeSpot(id: spotAID, title: "A")
         let spotB = makeSpot(id: spotBID, title: "B")
         let store = TestStore(
@@ -128,7 +157,7 @@ struct ItineraryFeatureTests {
                 itinerary: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [
-                        ItineraryDay(id: UUID(), spots: [spotA, spotB]),
+                        ItineraryDay(id: uuid(), spots: [spotA, spotB]),
                     ]
                 )
             )
@@ -142,8 +171,8 @@ struct ItineraryFeatureTests {
     }
 
     @Test func 下へ移動で次の行き先と入れ替えること() async {
-        let spotAID = UUID()
-        let spotBID = UUID()
+        let spotAID = uuid()
+        let spotBID = uuid()
         let spotA = makeSpot(id: spotAID, title: "A")
         let spotB = makeSpot(id: spotBID, title: "B")
         let store = TestStore(
@@ -151,7 +180,7 @@ struct ItineraryFeatureTests {
                 itinerary: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [
-                        ItineraryDay(id: UUID(), spots: [spotA, spotB]),
+                        ItineraryDay(id: uuid(), spots: [spotA, spotB]),
                     ]
                 )
             )
@@ -165,16 +194,16 @@ struct ItineraryFeatureTests {
     }
 
     @Test func 前日へ移動で前日の末尾へ追加すること() async {
-        let spotBID = UUID()
-        let spotA = makeSpot(title: "A")
+        let spotBID = uuid()
+        let spotA = makeSpot(id: uuid(), title: "A")
         let spotB = makeSpot(id: spotBID, title: "B")
         let store = TestStore(
             initialState: ItineraryFeature.State(
                 itinerary: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [
-                        ItineraryDay(id: UUID(), spots: [spotA]),
-                        ItineraryDay(id: UUID(), spots: [spotB]),
+                        ItineraryDay(id: uuid(), spots: [spotA]),
+                        ItineraryDay(id: uuid(), spots: [spotB]),
                     ]
                 )
             )
@@ -189,16 +218,16 @@ struct ItineraryFeatureTests {
     }
 
     @Test func 翌日へ移動で翌日の末尾へ追加すること() async {
-        let spotAID = UUID()
+        let spotAID = uuid()
         let spotA = makeSpot(id: spotAID, title: "A")
-        let spotB = makeSpot(title: "B")
+        let spotB = makeSpot(id: uuid(), title: "B")
         let store = TestStore(
             initialState: ItineraryFeature.State(
                 itinerary: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [
-                        ItineraryDay(id: UUID(), spots: [spotA]),
-                        ItineraryDay(id: UUID(), spots: [spotB]),
+                        ItineraryDay(id: uuid(), spots: [spotA]),
+                        ItineraryDay(id: uuid(), spots: [spotB]),
                     ]
                 )
             )
@@ -213,13 +242,13 @@ struct ItineraryFeatureTests {
     }
 
     @Test func 行き先更新で一致する行き先を置き換えること() async {
-        let spotID = UUID()
+        let spotID = uuid()
         let updated = makeSpot(id: spotID, title: "新")
         let store = TestStore(
             initialState: ItineraryFeature.State(
                 itinerary: Itinerary(
                     candidateSpots: [makeSpot(id: spotID, title: "旧")],
-                    itineraryDays: [ItineraryDay(id: UUID())]
+                    itineraryDays: [ItineraryDay(id: uuid())]
                 )
             )
         ) {
@@ -232,12 +261,12 @@ struct ItineraryFeatureTests {
     }
 
     @Test func 削除で確定済み行き先を取り除くこと() async {
-        let spotID = UUID()
+        let spotID = uuid()
         let store = TestStore(
             initialState: ItineraryFeature.State(
                 itinerary: Itinerary(
                     candidateSpots: [],
-                    itineraryDays: [ItineraryDay(id: UUID(), spots: [makeSpot(id: spotID, title: "A")])]
+                    itineraryDays: [ItineraryDay(id: uuid(), spots: [makeSpot(id: spotID, title: "A")])]
                 )
             )
         ) {

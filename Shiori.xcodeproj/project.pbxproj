@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8D014FD9304EB39500A19037 /* DependenciesTestSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 8D014FD8304EB39500A19037 /* DependenciesTestSupport */; };
 		8D6F46D1304909FE00BA2E02 /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 8D6F46D0304909FE00BA2E02 /* ComposableArchitecture */; };
 /* End PBXBuildFile section */
 
@@ -64,6 +65,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8D014FD9304EB39500A19037 /* DependenciesTestSupport in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -141,6 +143,7 @@
 			);
 			name = ShioriTests;
 			packageProductDependencies = (
+				8D014FD8304EB39500A19037 /* DependenciesTestSupport */,
 			);
 			productName = ShioriTests;
 			productReference = 8D4EC73D303E95240042B199 /* ShioriTests.xctest */;
@@ -203,6 +206,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				8D6F46CF304909FE00BA2E02 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
+				8D014FD7304EB39500A19037 /* XCRemoteSwiftPackageReference "swift-dependencies" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8D4EC731303E95210042B199 /* Products */;
@@ -595,6 +599,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		8D014FD7304EB39500A19037 /* XCRemoteSwiftPackageReference "swift-dependencies" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-dependencies";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.17.1;
+			};
+		};
 		8D6F46CF304909FE00BA2E02 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/pointfreeco/swift-composable-architecture";
@@ -608,6 +620,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		8D014FD8304EB39500A19037 /* DependenciesTestSupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8D014FD7304EB39500A19037 /* XCRemoteSwiftPackageReference "swift-dependencies" */;
+			productName = DependenciesTestSupport;
+		};
 		8D6F46D0304909FE00BA2E02 /* ComposableArchitecture */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 8D6F46CF304909FE00BA2E02 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */;

@@ -1,4 +1,5 @@
 import Foundation
+import ComposableArchitecture
 
 /// 日別行き先
 nonisolated struct ItineraryDay: Identifiable, Codable, Equatable {
@@ -10,27 +11,30 @@ nonisolated struct ItineraryDay: Identifiable, Codable, Equatable {
 /// 旅程
 nonisolated struct Itinerary: Codable, Equatable {
     /// 行き先候補
-    var candidateSpots: [Spot] = []
+    var candidateSpots: [Spot]
     
     /// 確定行き先
-    var itineraryDays: [ItineraryDay] = [ItineraryDay(id: UUID())]
-
+    var itineraryDays: [ItineraryDay]
+    
     enum CodingKeys: String, CodingKey {
         case candidateSpots
         case itineraryDays
     }
 
-    init(candidateSpots: [Spot] = [], itineraryDays: [ItineraryDay] = [ItineraryDay(id: UUID())]) {
+    init(candidateSpots: [Spot], itineraryDays: [ItineraryDay]) {
+        @Dependency(\.uuid) var uuid
+        
         self.candidateSpots = candidateSpots
-        self.itineraryDays = itineraryDays.isEmpty ? [ItineraryDay(id: UUID())] : itineraryDays
+        self.itineraryDays = itineraryDays.isEmpty ? [ItineraryDay(id: uuid())] : itineraryDays
     }
 
     init(from decoder: Decoder) throws {
+        @Dependency(\.uuid) var uuid
         let container = try decoder.container(keyedBy: CodingKeys.self)
         candidateSpots = try container.decode([Spot].self, forKey: .candidateSpots)
 
         let days = try container.decode([ItineraryDay].self, forKey: .itineraryDays)
-        itineraryDays = days.isEmpty ? [ItineraryDay(id: UUID())] : days
+        itineraryDays = days.isEmpty ? [ItineraryDay(id: uuid())] : days
     }
 
     func encode(to encoder: Encoder) throws {
@@ -46,13 +50,14 @@ nonisolated struct Itinerary: Codable, Equatable {
     ///
     /// 最低日数は 1 に固定する
     mutating func setDayCount(_ count: Int) {
+        @Dependency(\.uuid) var uuid
         let newCount = max(1, count)
         let currentCount = itineraryDays.count
 
         guard newCount != currentCount else { return }
 
         if newCount > currentCount {
-            let additional = (currentCount..<newCount).map { _ in ItineraryDay(id: UUID(), spots: []) }
+            let additional = (currentCount..<newCount).map { _ in ItineraryDay(id: uuid(), spots: []) }
             itineraryDays.append(contentsOf: additional)
             return
         }
@@ -79,12 +84,13 @@ nonisolated struct Itinerary: Codable, Equatable {
     ///
     /// タイトルは前後空白を除去する。空文字の場合は何もしない
     mutating func addCandidate(title: String) {
+        @Dependency(\.uuid) var uuid
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
         candidateSpots.append(
             Spot(
-                id: UUID(),
+                id: uuid(),
                 title: trimmed,
                 memo: ""
             )

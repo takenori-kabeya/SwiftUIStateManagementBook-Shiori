@@ -91,6 +91,9 @@ struct TripListView: View {
     }
     
     private func addTrip() {
+        @Dependency(\.date) var date
+        @Dependency(\.uuid) var uuid
+        
         let title = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !title.isEmpty else {
@@ -99,10 +102,10 @@ struct TripListView: View {
 
         let trip =
             Trip(info: TripInfo(
-                id: UUID(),
+                id: uuid(),
                 title: title,
-                startDate: Date.now.date),
-                itinerary: Itinerary()
+                startDate: date.now.date),
+                 itinerary: Itinerary(candidateSpots: [], itineraryDays: [ItineraryDay(id: uuid())])
             )
         
         store.send(.addTrip(trip))
