@@ -59,7 +59,7 @@ struct TripWeatherPlaceTests {
         Task {
             let place = makePlace()
             let trip = makeTrip(weatherPlace: place)
-            let state = await TripFeature.State(trip: trip)
+            let state = await TripFeature.State(trip: Shared(value: trip))
             let restored = await state.makeTrip()
             #expect(restored.info.weatherPlace == place)
             #expect(restored.info == trip.info)

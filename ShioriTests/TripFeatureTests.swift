@@ -6,9 +6,9 @@ import DependenciesTestSupport
 
 /// `TripFeature` を `TestStore` で検証する
 @Suite(
-    .dependencies {
-        $0.uuid = .incrementing
-    }
+  .dependencies {
+      $0.uuid = .incrementing
+  }
 )
 @MainActor
 struct TripFeatureTests {
@@ -18,11 +18,25 @@ struct TripFeatureTests {
         id: UUID,
         title: String = "旅行",
         startDate: Date = Date(timeIntervalSince1970: 0),
-        itinerary: Itinerary
+        itinerary: Itinerary,
+        weatherPlace: Place? = nil
     ) -> Trip {
         Trip(
-            info: TripInfo(id: id, title: title, startDate: startDate),
+            info: TripInfo(id: id, title: title, startDate: startDate, weatherPlace: weatherPlace),
             itinerary: itinerary
+        )
+    }
+
+    private func makePlace(
+        name: String = "東京駅",
+        latitude: Double = 35.6812,
+        longitude: Double = 139.7671
+    ) -> Place {
+        Place(
+            name: name,
+            address: "東京都千代田区",
+            latitude: latitude,
+            longitude: longitude
         )
     }
 
@@ -56,7 +70,7 @@ struct TripFeatureTests {
             )
         )
 
-        let state = TripFeature.State(trip: trip)
+        let state = TripFeature.State(trip: Shared(value: trip))
         let restored = state.makeTrip()
 
         #expect(state.id == tripID)
@@ -73,7 +87,7 @@ struct TripFeatureTests {
                 itineraryDays: [ItineraryDay(id: dayID)]
             )
         )
-        let store = TestStore(initialState: TripFeature.State(trip: trip)) {
+        let store = TestStore(initialState: TripFeature.State(trip: Shared(value: trip))) {
             TripFeature()
         }
         let spotID = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!  // 1の次なので2になるはず
@@ -107,7 +121,7 @@ struct TripFeatureTests {
                 ]
             )
         )
-        let store = TestStore(initialState: TripFeature.State(trip: trip)) {
+        let store = TestStore(initialState: TripFeature.State(trip: Shared(value: trip))) {
             TripFeature()
         }
 

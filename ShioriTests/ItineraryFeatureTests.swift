@@ -52,7 +52,7 @@ struct ItineraryFeatureTests {
                 ),
             ]
         )
-        let store = TestStore(initialState: ItineraryFeature.State(itinerary: initial)) {
+        let store = TestStore(initialState: ItineraryFeature.State(itinerary: Shared(value: initial))) {
             ItineraryFeature()
         }
         await store.send(.autoShiftButtonTapped(dayID: day1ID)) {
@@ -76,7 +76,7 @@ struct ItineraryFeatureTests {
                 ),
             ]
         )
-        let store = TestStore(initialState: ItineraryFeature.State(itinerary: initial)) {
+        let store = TestStore(initialState: ItineraryFeature.State(itinerary: Shared(value: initial))) {
             ItineraryFeature()
         }
 
@@ -87,7 +87,7 @@ struct ItineraryFeatureTests {
     @Test func 候補追加でタイトルを候補へ追加すること() async {
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(candidateSpots: [], itineraryDays: [ItineraryDay(id: uuid())]) // ここのuuid()で0番が採られる
+                itinerary: Shared(value: Itinerary(candidateSpots: [], itineraryDays: [ItineraryDay(id: uuid())])) // ここのuuid()で0番が採られる
             )
         ) {
             ItineraryFeature()
@@ -117,13 +117,13 @@ struct ItineraryFeatureTests {
         let day0Spot = makeSpot(id: uuid(), title: "Day0")
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
+                itinerary: Shared(value: Itinerary(
                     candidateSpots: [candidate],
                     itineraryDays: [
                         ItineraryDay(id: day0ID, spots: [day0Spot]),
                         ItineraryDay(id: day1ID, spots: []),
                     ]
-                )
+                ))
             )
         ) {
             ItineraryFeature()
@@ -152,12 +152,12 @@ struct ItineraryFeatureTests {
 
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
+                itinerary: Shared(value: Itinerary(
                     candidateSpots: [candidate],
                     itineraryDays: [
                         ItineraryDay(id: dayID)
                     ]
-                )
+                ))
             )
         ) {
             ItineraryFeature()
@@ -189,10 +189,10 @@ struct ItineraryFeatureTests {
         let spot = makeSpot(id: spotID, title: "A")
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
+                itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: uuid(), spots: [spot])]
-                )
+                ))
             )
         ) {
             ItineraryFeature()
@@ -212,12 +212,12 @@ struct ItineraryFeatureTests {
         let spotB = makeSpot(id: spotBID, title: "B")
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
+                itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [
                         ItineraryDay(id: uuid(), spots: [spotA, spotB]),
                     ]
-                )
+                ))
             )
         ) {
             ItineraryFeature()
@@ -238,12 +238,12 @@ struct ItineraryFeatureTests {
         let spotB = makeSpot(id: spotBID, title: "B")
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
+                itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [
                         ItineraryDay(id: uuid(), spots: [spotA, spotB]),
                     ]
-                )
+                ))
             )
         ) {
             ItineraryFeature()
@@ -263,13 +263,13 @@ struct ItineraryFeatureTests {
         let spotB = makeSpot(id: spotBID, title: "B")
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
+                itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [
                         ItineraryDay(id: uuid(), spots: [spotA]),
                         ItineraryDay(id: uuid(), spots: [spotB]),
                     ]
-                )
+                ))
             )
         ) {
             ItineraryFeature()
@@ -290,13 +290,13 @@ struct ItineraryFeatureTests {
         let spotB = makeSpot(id: uuid(), title: "B")
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
+                itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [
                         ItineraryDay(id: uuid(), spots: [spotA]),
                         ItineraryDay(id: uuid(), spots: [spotB]),
                     ]
-                )
+                ))
             )
         ) {
             ItineraryFeature()
@@ -316,10 +316,10 @@ struct ItineraryFeatureTests {
         let spot = makeSpot(id: spotID, title: "A")
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
+                itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: uuid(), spots: [spot])]
-                )
+                ))
             )
         ) {
             ItineraryFeature()
@@ -335,10 +335,10 @@ struct ItineraryFeatureTests {
         let spot = makeSpot(id: spotID, title: "A")
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
+                itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: uuid(), spots: [spot])]
-                ),
+                )),
                 spotPendingDeletion: spotID
             )
         ) {
@@ -359,10 +359,10 @@ struct ItineraryFeatureTests {
         let spot = makeSpot(id: spotID, title: "A")
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
+                itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: uuid(), spots: [spot])]
-                ),
+                )),
                 spotPendingDeletion: spotID
             )
         ) {
@@ -379,10 +379,10 @@ struct ItineraryFeatureTests {
         let original = makeSpot(id: spotID, title: "旧", hour: 10, minute: 0, durationMinutes: 60)
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
+                itinerary: Shared(value: Itinerary(
                     candidateSpots: [original],
                     itineraryDays: [ItineraryDay(id: uuid())]
-                )
+                ))
             )
         ) {
             ItineraryFeature()
@@ -416,10 +416,10 @@ struct ItineraryFeatureTests {
         let original = makeSpot(id: spotID, title: "旧", hour: 10, minute: 0, durationMinutes: 60)
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
+                itinerary: Shared(value: Itinerary(
                     candidateSpots: [original],
                     itineraryDays: [ItineraryDay(id: uuid())]
-                )
+                ))
             )
         ) {
             ItineraryFeature()
@@ -449,10 +449,10 @@ struct ItineraryFeatureTests {
         let spotB = makeSpot(id: spotBID, title: "B", hour: 11, minute: 0, durationMinutes: 60)
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
+                itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB])]
-                )
+                ))
             )
         ) {
             ItineraryFeature()
@@ -495,10 +495,10 @@ struct ItineraryFeatureTests {
         let spotB = makeSpot(id: spotBID, title: "B", hour: 11, minute: 0, durationMinutes: 60)
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
+                itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB])]
-                ),
+                )),
                 scheduleShiftPending: ItineraryFeature.ScheduleShiftPending(
                     dayID: dayID,
                     fromSpotID: spotBID
@@ -525,10 +525,10 @@ struct ItineraryFeatureTests {
         let spotB = makeSpot(id: spotBID, title: "B", hour: 11, minute: 0, durationMinutes: 60)
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
+                itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB])]
-                ),
+                )),
                 scheduleShiftPending: ItineraryFeature.ScheduleShiftPending(
                     dayID: dayID,
                     fromSpotID: spotBID
@@ -552,10 +552,10 @@ struct ItineraryFeatureTests {
         let spotB = makeSpot(id: uuid(), title: "B", hour: 12, minute: 0, durationMinutes: 60)
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
+                itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB])]
-                )
+                ))
             )
         ) {
             ItineraryFeature()
@@ -591,10 +591,10 @@ struct ItineraryFeatureTests {
         let spotB = makeSpot(id: uuid(), title: "B", hour: 11, minute: 0, durationMinutes: 60)
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
+                itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB])]
-                )
+                ))
             )
         ) {
             ItineraryFeature()
@@ -629,10 +629,10 @@ struct ItineraryFeatureTests {
         let spotA = makeSpot(id: uuid(), title: "A", hour: 10, minute: 0, durationMinutes: 60)
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
+                itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: dayID, spots: [spotA])]
-                )
+                ))
             )
         ) {
             ItineraryFeature()
@@ -668,10 +668,10 @@ struct ItineraryFeatureTests {
         let spotB = makeSpot(id: uuid(), title: "B", hour: 11, minute: 0, durationMinutes: 60)
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
+                itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB])]
-                )
+                ))
             )
         ) {
             ItineraryFeature()
@@ -710,10 +710,10 @@ struct ItineraryFeatureTests {
         let spotC = makeSpot(id: uuid(), title: "C", hour: 13, minute: 0, durationMinutes: 60)
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
+                itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB, spotC])]
-                )
+                ))
             )
         ) {
             ItineraryFeature()
@@ -754,10 +754,10 @@ struct ItineraryFeatureTests {
         let spotB = makeSpot(id: spotBID, title: "B", hour: 11, minute: 0, durationMinutes: 60)
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
+                itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB])]
-                )
+                ))
             )
         ) {
             ItineraryFeature()
@@ -812,10 +812,10 @@ struct ItineraryFeatureTests {
         let spotC = makeSpot(id: spotCID, title: "C", hour: 12, minute: 0, durationMinutes: 60)
         let store = TestStore(
             initialState: ItineraryFeature.State(
-                itinerary: Itinerary(
+                itinerary: Shared(value: Itinerary(
                     candidateSpots: [],
                     itineraryDays: [ItineraryDay(id: dayID, spots: [spotA, spotB, spotC])]
-                ),
+                )),
                 scheduleShiftPending: ItineraryFeature.ScheduleShiftPending(
                     dayID: dayID,
                     fromSpotID: spotBID
