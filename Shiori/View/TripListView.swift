@@ -7,6 +7,8 @@ struct TripListView: View {
     @State private var editingTrip: Trip?
     @State private var editingTitle = ""
     
+    @State private var hasLoaded: Bool = false
+    
     @State var isEditing: Bool = false
 
     let tripPersistence: TripPersistence
@@ -59,11 +61,24 @@ struct TripListView: View {
             }
             .navigationTitle("旅行一覧")
             .task {
-                trips = try! await tripPersistence.load()
+                guard !hasLoaded else { return }
+                
+                do {
+                    trips = try await tripPersistence.load()
+                    hasLoaded = true
+                }
+                catch {
+                    print("読み込み失敗:", error)
+                }
             }
             .onDisappear {
                 Task {
                     try? await tripPersistence.save(trips)
+                }
+            }
+            .onChange(of: trips) { _, newTrips in
+                Task {
+                    try? await tripPersistence.save(newTrips)
                 }
             }
             .isEditing(isEditing)
