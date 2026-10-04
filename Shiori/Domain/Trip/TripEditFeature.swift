@@ -62,12 +62,14 @@ struct TripEditFeature {
                     }
                 }
             case .dayCountReductionConfirmed:
+                state.dayCountReductionPending = nil
                 let draft = state.draft
                 return .run { send in
                     await send(.delegate(.saveRequested(draft)))
                     await dismiss()
                 }
             case .dayCountReductionDismissed:
+                state.dayCountReductionPending = nil
                 return .none
             case .cancelButtonTapped:
                 return .run { _ in

@@ -2,55 +2,63 @@ import SwiftUI
 import ComposableArchitecture
 
 struct TripEditorView: View {
-    let store: StoreOf<TripsFeature>
-    @Binding var editingTrip: Trip?
-    
-    @State var editingTitle: String
-    @State var editingStartDate: Date
-    @State var editingDayCount: Int
+    @Bindable var store: StoreOf<TripEditFeature>
     
     var body: some View {
         NavigationStack {
             Form {
-                TextField("旅行名", text: $editingTitle)
-                DatePicker("開始日", selection: $editingStartDate, displayedComponents: .date)
-                let maxDayCount = max(10, editingTrip?.itinerary.itineraryDays.count ?? 1)
-                Stepper(value: $editingDayCount, in: 1...maxDayCount) {
-                    Text("\(editingDayCount)日")
+                TextField("旅行名", text: $store.draft.info.title.sending(\.titleChanged))
+                DatePicker("開始日", selection: $store.draft.info.startDate.sending(\.startDateChanged), displayedComponents: .date)
+                let maxDayCount = max(10, store.draft.currentNumDays)
+                Stepper(value: $store.draft.newNumDays.sending(\.numDaysChanged), in: 1...maxDayCount) {
+                    Text("\(store.draft.newNumDays)日")
                 }
             }
             .navigationTitle("旅行を編集")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("キャンセル") {
-                        editingTrip = nil
+                    Button("キャンセル", role: .cancel) {
+                        store.send(.cancelButtonTapped)
                     }
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") {
-                        if let trip = editingTrip {
-                            updateTrip(trip)
+                        store.send(.saveButtonTapped)
+                    }
+                }
+            }
+            .confirmationDialog(
+                dayCountReductionMessage,
+                isPresented: Binding(
+                    get: { store.dayCountReductionPending != nil },
+                    set: { isPresented in
+                        if !isPresented {
+                            store.send(.dayCountReductionDismissed)
                         }
                     }
+                ),
+                titleVisibility: .visible,
+            ) {
+                Button("日数を減らす", role: .destructive) {
+                    store.send(.dayCountReductionConfirmed)
+                }
+                Button("キャンセル") {
+                    store.send(.dayCountReductionDismissed)
                 }
             }
         }
     }
-    
-    private func updateTrip(_ trip: Trip) {
-        let title = editingTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard !title.isEmpty else {
-            return
+    private var dayCountReductionMessage: String {
+        guard let titles = store.state.dayCountReductionPending?.spotTitlesToMove else {
+            return ""
         }
-
-        var updatedTrip = trip
-        updatedTrip.info.title = title
-        updatedTrip.info.startDate = editingStartDate
-        updatedTrip.itinerary.setDayCount(editingDayCount)
-
-        store.send(.updateTrip(updatedTrip))
-        editingTrip = nil
+        if titles.isEmpty {
+            return "日数を減らしますか？"
+        }
+        
+        let titleText = titles.joined(separator: "、")
+        return "次の行き先は最終日に移動します: \(titleText)"
     }
+
 }

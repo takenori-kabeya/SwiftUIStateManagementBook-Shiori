@@ -5,10 +5,6 @@ struct TripListView: View {
     @State var store: StoreOf<TripsFeature>
     @State private var newTitle = ""
 
-    @State private var editingTrip: Trip?
-    @State private var editingTitle = ""
-    @State private var editingStartDate: Date = Date.now.date
-    @State private var editingDayCount: Int = 1
     
     @State var isEditing: Bool = false
 
@@ -32,7 +28,7 @@ struct TripListView: View {
                                 Text(tripStore.info.title)
                                 Spacer()
                                 Button("編集") {
-                                    startEditing(tripStore.state.makeTrip())
+                                    store.send(.editButtonTapped(tripStore.info.id))
                                 }
                                 .buttonStyle(.borderless)
                                 Button("削除", role: .destructive) {
@@ -61,12 +57,8 @@ struct TripListView: View {
                 store.send(.load)
             }
             .isEditing(isEditing)
-            .sheet(item: $editingTrip) { trip in
-                TripEditorView(store: store,
-                               editingTrip: $editingTrip,
-                               editingTitle: trip.info.title,
-                               editingStartDate: trip.info.startDate,
-                               editingDayCount: trip.itinerary.itineraryDays.count)
+            .sheet(item: $store.scope(state: \.editTrip, action: \.editTrip)) { editStore in
+                TripEditorView(store: editStore)
             }
         }
     }
@@ -98,12 +90,6 @@ struct TripListView: View {
         store.send(.deleteTrip(tripId))
     }
 
-    private func startEditing(_ trip: Trip) {
-        editingTrip = trip
-        editingTitle = trip.info.title
-        editingStartDate = trip.info.startDate
-        editingDayCount = max(1, trip.itinerary.itineraryDays.count)
-    }
     
     
 }
